@@ -1,0 +1,16 @@
+{
+    "ServerUrl": "https://your-app.up.railway.app",
+    "AgentToken": "",
+    "EnrollmentToken": "",
+    "IntervalSeconds": 300,
+    "PingCount": 4,
+    "PingTarget": "",
+    "SpeedtestPath": "C:\\path\\to\\speedtest.exe",
+    "SpeedtestServerId": "",
+    "SkipSpeedtest": false,
+    "RequestTimeoutSeconds": 90,
+    "BufferPath": "buffer.jsonl",
+    "LogPath": "agent.log",
+    "MaxBufferItems": 200,
+    "StatePath": "state.json"
+}
