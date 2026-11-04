@@ -332,13 +332,6 @@
             </p>
         </div>
 
-        <a
-            href="{{ route('schools.create') }}"
-            class="btn-primary"
-        >
-            + Tambah Sekolah
-        </a>
-
     </div>
 
     @if (session('success'))
@@ -495,25 +488,6 @@
                                         Edit
                                     </a>
 
-                                    <form
-                                        action="{{ route('schools.destroy', $school) }}"
-                                        method="POST"
-                                        onsubmit="return confirm('Apakah Anda yakin ingin menghapus data sekolah ini?')"
-                                        style="margin: 0;"
-                                    >
-
-                                        @csrf
-                                        @method('DELETE')
-
-                                        <button
-                                            type="submit"
-                                            class="action-link action-delete"
-                                        >
-                                            Hapus
-                                        </button>
-
-                                    </form>
-
                                 </div>
 
                             </td>
@@ -532,8 +506,8 @@
                                         Belum ada data sekolah
                                     </strong>
 
-                                    Tambahkan sekolah terlebih dahulu
-                                    untuk memulai monitoring QoS.
+                                    Data sekolah untuk akun ini belum tersedia.
+                                    Silakan hubungi pengelola sistem.
 
                                 </div>
 

@@ -58,7 +58,15 @@ if (Test-Path -LiteralPath $speedtestSource) {
 } elseif (Test-Path -LiteralPath $speedtestTarget) {
     Write-Host 'Speedtest CLI sudah tersedia di folder agent.' -ForegroundColor Green
 } else {
-    Write-Host 'speedtest.exe belum ditemukan. Agent tetap berjalan untuk ping; letakkan speedtest.exe di folder agent untuk data throughput.' -ForegroundColor Yellow
+    Write-Host 'Mengunduh Speedtest CLI dari server...' -ForegroundColor Cyan
+
+    try {
+        Invoke-WebRequest -Uri ($serverUrl + '/agent/files/speedtest.exe') -OutFile $speedtestTarget -UseBasicParsing
+        Write-Host 'Speedtest CLI berhasil diunduh.' -ForegroundColor Green
+    } catch {
+        Remove-Item -LiteralPath $speedtestTarget -Force -ErrorAction SilentlyContinue
+        Write-Host 'Speedtest CLI gagal diunduh. Agent tetap berjalan untuk ping; letakkan speedtest.exe di folder agent untuk data throughput.' -ForegroundColor Yellow
+    }
 }
 
 Remove-Item -LiteralPath $statePath -Force -ErrorAction SilentlyContinue
@@ -67,7 +75,7 @@ $config = [ordered]@{
     ServerUrl = $serverUrl
     AgentToken = ''
     EnrollmentToken = $enrollmentToken
-    IntervalSeconds = 300
+    IntervalSeconds = __INTERVAL_SECONDS__
     PingCount = 4
     PingTarget = ''
     SpeedtestPath = ''
@@ -92,9 +100,9 @@ if ($LASTEXITCODE -ne 0) {
     throw 'Agent gagal melakukan enrollment. Periksa koneksi internet dan URL server.'
 }
 
-Write-Host 'Memasang jadwal otomatis setiap 5 menit...' -ForegroundColor Cyan
+Write-Host ('Memasang jadwal otomatis setiap {0} menit...' -f __INTERVAL_MINUTES__) -ForegroundColor Cyan
 
-& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $taskInstallerPath -ConfigPath $configPath -IntervalMinutes 5
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $taskInstallerPath -ConfigPath $configPath -IntervalMinutes __INTERVAL_MINUTES__
 
 if ($LASTEXITCODE -ne 0) {
     throw 'Gagal memasang Task Scheduler agent.'

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\School;
 use App\Models\QosMeasurement;
+use App\Models\UserSetting;
 use App\Services\QosClassificationService;
 use App\Services\QosRcaService;
 use App\Services\QosDssService;
@@ -24,27 +25,17 @@ class DashboardController extends Controller
         */
         $user = $request->user();
 
-        $isSchoolUser = $user && $user->isSchool();
-
-        $schools = $isSchoolUser
-            ? School::whereKey($user->school_id)->get()
-            : School::orderBy('nama_sekolah')->get();
-
         /*
         |--------------------------------------------------------------------------
-        | Tentukan sekolah yang dipilih
+        | Setiap akun hanya memiliki satu sekolah (datanya sendiri)
         |--------------------------------------------------------------------------
         */
-        $selectedSchoolId = $isSchoolUser
-            ? $user->school_id
-            : $request->get('school_id');
+        $schools = $user && $user->school_id
+            ? School::whereKey($user->school_id)->get()
+            : collect();
 
-        if ($selectedSchoolId) {
-            $selectedSchool = $schools->firstWhere('id', (int) $selectedSchoolId)
-                ?? School::find($selectedSchoolId);
-        } else {
-            $selectedSchool = $schools->first();
-        }
+        $selectedSchool = $schools->first();
+        $selectedSchoolId = $selectedSchool?->id;
 
         /*
         |--------------------------------------------------------------------------
@@ -369,6 +360,21 @@ if ($selectedSchool) {
 
         /*
         |--------------------------------------------------------------------------
+        | Interval penyegaran dashboard milik akun ini
+        |--------------------------------------------------------------------------
+        */
+        $dashboardRefreshInterval = (int) UserSetting::getForUser(
+            $user?->id,
+            'dashboard_refresh_interval',
+            '30'
+        );
+
+        if (!in_array($dashboardRefreshInterval, [15, 30, 60, 120], true)) {
+            $dashboardRefreshInterval = 30;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
         | Kirim data ke dashboard
         |--------------------------------------------------------------------------
         */
@@ -381,6 +387,7 @@ if ($selectedSchool) {
             'latestDss' => $latestDss,
             'chartMeasurements' => $chartMeasurements,
             'schoolStatuses' => $schoolStatuses,
+            'dashboardRefreshInterval' => $dashboardRefreshInterval,
         ]);
     }
 

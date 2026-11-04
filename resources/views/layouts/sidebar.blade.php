@@ -358,13 +358,11 @@
             <span class="menu-label">Monitoring QoS</span>
         </a>
 
-        @if(auth()->user()?->isAdmin())
-            <a href="{{ route('schools.index') }}"
-               class="{{ request()->routeIs('schools.*') ? 'active' : '' }}">
-                <span class="menu-icon" aria-hidden="true">▣</span>
-                <span class="menu-label">Data Sekolah</span>
-            </a>
-        @endif
+        <a href="{{ route('schools.index') }}"
+           class="{{ request()->routeIs('schools.*') ? 'active' : '' }}">
+            <span class="menu-icon" aria-hidden="true">▣</span>
+            <span class="menu-label">Data Sekolah</span>
+        </a>
 
         <a href="{{ route('monitoring.history') }}"
            class="{{ request()->routeIs('monitoring.history') ? 'active' : '' }}">
@@ -449,13 +447,7 @@
 
         <div class="sidebar-user-copy">
             <strong>{{ auth()->user()->name ?? 'Pengguna' }}</strong>
-            <span>
-                @if(auth()->user()?->isAdmin())
-                    Administrator
-                @else
-                    {{ auth()->user()?->school?->nama_sekolah ?? 'Sekolah' }}
-                @endif
-            </span>
+            <span>{{ auth()->user()?->school?->nama_sekolah ?? 'Pengguna' }}</span>
         </div>
 
         <form action="{{ route('logout') }}" method="POST" style="margin:0;">

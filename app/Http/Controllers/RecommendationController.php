@@ -19,24 +19,15 @@ class RecommendationController extends Controller
     ) {
         $user = $request->user();
 
-        $isSchoolUser = $user && $user->isSchool();
+        $schoolId = $user?->school_id;
 
-        $schools = $isSchoolUser
-            ? School::whereKey($user->school_id)->get()
-            : School::orderBy('nama_sekolah')->get();
-
-        $schoolId = $isSchoolUser
-            ? $user->school_id
-            : $request->get('school_id');
+        $schools = $schoolId
+            ? School::whereKey($schoolId)->get()
+            : collect();
 
         $query = QosMeasurement::with('school')
+            ->where('school_id', $schoolId)
             ->latest('measured_at');
-
-        if ($isSchoolUser) {
-            $query->where('school_id', $user->school_id);
-        } elseif ($schoolId) {
-            $query->where('school_id', $schoolId);
-        }
 
         $measurements = $query->paginate(10)->withQueryString();
 

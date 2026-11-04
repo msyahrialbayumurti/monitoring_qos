@@ -8,47 +8,28 @@ use Illuminate\Support\Str;
 
 class SchoolController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $schools = School::latest()->get();
+        $schools = $this->schoolsFor($request);
 
         return view('schools.index', compact('schools'));
     }
 
-    public function create()
+    public function edit(Request $request, School $school)
     {
-        return view('schools.create');
-    }
+        $this->authorizeSchool($request, $school);
 
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'nama_sekolah' => 'required|string|max:255',
-            'ip_target' => 'required|ip',
-            'bandwidth' => 'required|numeric|min:1',
-            'paket_isp' => 'nullable|string|max:255',
-        ]);
-
-        $validated['status'] = true;
-
-        School::create($validated);
-
-        return redirect()
-            ->route('schools.index')
-            ->with('success', 'Data sekolah berhasil ditambahkan.');
-    }
-
-    public function edit(School $school)
-    {
         return view('schools.edit', compact('school'));
     }
 
     public function update(Request $request, School $school)
     {
+        $this->authorizeSchool($request, $school);
+
         $validated = $request->validate([
             'nama_sekolah' => 'required|string|max:255',
-            'ip_target' => 'required|ip',
-            'bandwidth' => 'required|numeric|min:1',
+            'ip_target' => 'nullable|ip',
+            'bandwidth' => 'nullable|numeric|min:1',
             'paket_isp' => 'nullable|string|max:255',
             'status' => 'required|boolean',
         ]);
@@ -60,8 +41,10 @@ class SchoolController extends Controller
             ->with('success', 'Data sekolah berhasil diperbarui.');
     }
 
-    public function regenerateAgentToken(School $school)
+    public function regenerateAgentToken(Request $request, School $school)
     {
+        $this->authorizeSchool($request, $school);
+
         $school->update([
             'agent_token' => Str::random(48),
             'agent_last_seen_at' => null,
@@ -76,12 +59,21 @@ class SchoolController extends Controller
             ->with('success', 'Token agent berhasil dibuat ulang. Perbarui token pada agent sekolah.');
     }
 
-    public function destroy(School $school)
+    private function schoolsFor(Request $request)
     {
-        $school->delete();
+        $schoolId = $request->user()?->school_id;
 
-        return redirect()
-            ->route('schools.index')
-            ->with('success', 'Data sekolah berhasil dihapus.');
+        return $schoolId
+            ? School::whereKey($schoolId)->get()
+            : collect();
+    }
+
+    private function authorizeSchool(Request $request, School $school): void
+    {
+        abort_unless(
+            $request->user()
+                && (int) $request->user()->school_id === (int) $school->id,
+            403
+        );
     }
 }

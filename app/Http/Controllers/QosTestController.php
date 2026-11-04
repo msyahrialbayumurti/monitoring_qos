@@ -16,8 +16,7 @@ class QosTestController extends Controller
         $user = auth()->user();
 
         if (
-            $user &&
-            $user->isSchool() &&
+            ! $user ||
             (int) $user->school_id !== (int) $school->id
         ) {
             abort(403, 'Anda hanya dapat melakukan tes untuk sekolah sendiri.');

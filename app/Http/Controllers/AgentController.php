@@ -4,7 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\QosMeasurement;
 use App\Models\School;
-use App\Models\Setting;
+use App\Models\User;
+use App\Models\UserSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -81,8 +82,14 @@ class AgentController extends Controller
     {
         $school = $this->school($request);
 
-        $interval = (int) (
-            Setting::where('key', 'monitoring_interval')->value('value') ?? 5
+        $ownerId = User::query()
+            ->where('school_id', $school->id)
+            ->value('id');
+
+        $interval = (int) UserSetting::getForUser(
+            $ownerId,
+            'monitoring_interval',
+            '5'
         );
 
         if (! in_array($interval, [1, 5, 10, 15], true)) {

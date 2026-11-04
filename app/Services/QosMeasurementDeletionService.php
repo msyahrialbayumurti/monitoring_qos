@@ -27,11 +27,11 @@ class QosMeasurementDeletionService
         $query = QosMeasurement::query();
         $user = $request->user();
 
-        if ($user?->isSchool()) {
-            $query->where('school_id', $user->school_id);
-        } elseif ($request->filled('school_id')) {
-            $query->where('school_id', $request->integer('school_id'));
+        if (! $user || ! $user->school_id) {
+            return 0;
         }
+
+        $query->where('school_id', $user->school_id);
 
         if (! $deleteAll) {
             $query->whereIn('id', $ids);

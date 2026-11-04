@@ -12,36 +12,61 @@ class AgentEnrollmentTest extends TestCase
 {
     use DatabaseTransactions;
 
-    public function test_setup_download_and_enrollment_flow(): void
+    public function test_cmd_installer_embeds_a_working_setup_script(): void
     {
-        $admin = User::where('role', 'admin')->first();
-
-        if (! $admin) {
-            $admin = User::create([
-                'name' => 'Agent Test Admin',
-                'email' => 'agent-test-' . Str::random(8) . '@example.test',
-                'password' => 'password',
-                'role' => 'admin',
-            ]);
-        }
-
-        $school = School::create([
-            'nama_sekolah' => 'TEMP Agent Enrollment Test',
-            'ip_target' => null,
-            'bandwidth' => null,
-            'paket_isp' => null,
-            'status' => true,
-        ]);
+        $school = $this->makeSchool('TEMP Agent CMD Test');
+        $user = $this->makeUser($school->id);
 
         try {
-            $response = $this->actingAs($admin)->get(route('agent.setup', $school));
+            $response = $this->actingAs($user)->get(route('agent.setup.cmd', $school));
+
+            $response->assertOk();
+
+            $body = $response->getContent();
+
+            $this->assertStringContainsString('@echo off', $body);
+            $this->assertStringContainsString('Start-Process', $body);
+            $this->assertStringContainsString('FromBase64String', $body);
+            $this->assertStringNotContainsString('__SERVER_URL__', $body);
+
+            preg_match("/\\\$b='([^']+)'/", $body, $matches);
+
+            $decoded = base64_decode($matches[1] ?? '', true);
+
+            $this->assertNotFalse($decoded);
+            $this->assertStringContainsString('EnrollmentToken', $decoded);
+            $this->assertStringNotContainsString('__INTERVAL_MINUTES__', $decoded);
+            $this->assertStringNotContainsString('__INTERVAL_SECONDS__', $decoded);
+
+            preg_match("/\\\$enrollmentToken = '([^']+)'/", $decoded, $tokenMatch);
+
+            $this->assertNotEmpty($tokenMatch[1] ?? null);
+
+            $school->refresh();
+
+            $this->assertSame($tokenMatch[1], $school->agent_enrollment_token);
+        } finally {
+            $school->delete();
+        }
+    }
+
+    public function test_setup_download_and_enrollment_flow(): void
+    {
+        $school = $this->makeSchool('TEMP Agent Enrollment Test');
+        $user = $this->makeUser($school->id);
+
+        try {
+            $response = $this->actingAs($user)->get(route('agent.setup', $school));
 
             $response->assertOk();
             $script = $response->getContent();
 
             $this->assertStringContainsString('EnrollmentToken', $script);
+            $this->assertStringContainsString('/agent/files/speedtest.exe', $script);
             $this->assertStringNotContainsString('__SERVER_URL__', $script);
             $this->assertStringNotContainsString('__ENROLLMENT_TOKEN__', $script);
+            $this->assertStringNotContainsString('__INTERVAL_MINUTES__', $script);
+            $this->assertStringNotContainsString('__INTERVAL_SECONDS__', $script);
 
             preg_match("/\\\$enrollmentToken = '([^']+)'/", $script, $matches);
 
@@ -96,5 +121,38 @@ class AgentEnrollmentTest extends TestCase
         } finally {
             $school->delete();
         }
+    }
+
+    public function test_speedtest_binary_is_served_to_agents(): void
+    {
+        if (! is_file(storage_path('app/tools/speedtest.exe'))) {
+            $this->markTestSkipped('Speedtest CLI tidak tersedia di server.');
+        }
+
+        $this->get('/agent/files/speedtest.exe')
+            ->assertOk()
+            ->assertHeader('content-type', 'application/octet-stream');
+    }
+
+    private function makeSchool(string $name): School
+    {
+        return School::create([
+            'nama_sekolah' => $name,
+            'ip_target' => null,
+            'bandwidth' => null,
+            'paket_isp' => null,
+            'status' => true,
+        ]);
+    }
+
+    private function makeUser(int $schoolId): User
+    {
+        return User::create([
+            'school_id' => $schoolId,
+            'role' => 'user',
+            'name' => 'Agent Test ' . Str::random(5),
+            'email' => 'agent-test-' . Str::random(10) . '@example.test',
+            'password' => 'password',
+        ]);
     }
 }

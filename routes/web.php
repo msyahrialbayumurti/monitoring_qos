@@ -53,6 +53,9 @@ Route::get('/agent/files/{file}', [AgentSetupController::class, 'file'])
     ->where('file', 'qos-agent\.ps1|install-agent-task\.ps1')
     ->name('agent.files');
 
+Route::get('/agent/files/speedtest.exe', [AgentSetupController::class, 'speedtest'])
+    ->name('agent.speedtest');
+
 /*
 |--------------------------------------------------------------------------
 | Halaman yang membutuhkan login
@@ -65,6 +68,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/schools/{school}/agent-setup', [AgentSetupController::class, 'download'])
         ->name('agent.setup');
+
+    Route::get('/schools/{school}/agent-setup-cmd', [AgentSetupController::class, 'downloadCmd'])
+        ->name('agent.setup.cmd');
 
     Route::get('/monitoring-qos', [MonitoringController::class, 'index'])
         ->name('monitoring.index');
@@ -96,36 +102,33 @@ Route::middleware('auth')->group(function () {
     |--------------------------------------------------------------------------
     | Pengaturan
     |--------------------------------------------------------------------------
-    | Semua pengguna dapat melihat, tetapi hanya admin yang boleh mengubah.
+    | Semua pengguna memiliki hak yang sama.
     */
 
     Route::get('/pengaturan', [SettingsController::class, 'index'])
         ->name('settings.index');
 
     Route::put('/pengaturan', [SettingsController::class, 'update'])
-        ->middleware('admin')
         ->name('settings.update');
 
     /*
     |--------------------------------------------------------------------------
-    | Data Sekolah (khusus admin)
+    | Data Sekolah milik akun
     |--------------------------------------------------------------------------
+    | Setiap akun hanya dapat melihat dan mengubah sekolahnya sendiri.
     */
 
-    Route::middleware('admin')->group(function () {
-        Route::post(
-            '/schools/{school}/agent-token',
-            [SchoolController::class, 'regenerateAgentToken']
-        )->name('schools.agent-token');
+    Route::post(
+        '/schools/{school}/agent-token',
+        [SchoolController::class, 'regenerateAgentToken']
+    )->name('schools.agent-token');
 
-        Route::resource('schools', SchoolController::class)
-            ->only([
-                'index',
-                'create',
-                'store',
-                'edit',
-                'update',
-                'destroy',
-            ]);
-    });
+    Route::get('/schools', [SchoolController::class, 'index'])
+        ->name('schools.index');
+
+    Route::get('/schools/{school}/edit', [SchoolController::class, 'edit'])
+        ->name('schools.edit');
+
+    Route::put('/schools/{school}', [SchoolController::class, 'update'])
+        ->name('schools.update');
 });

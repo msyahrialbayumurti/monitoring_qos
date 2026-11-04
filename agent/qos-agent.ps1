@@ -501,6 +501,18 @@ function Invoke-AgentCycle {
         $packetLoss = $speedtest.packet_loss
     }
 
+    $delay = $speedtest.delay
+
+    if ($null -eq $delay) {
+        $delay = $ping.ping
+    }
+
+    $jitterValue = $speedtest.jitter
+
+    if ($null -eq $jitterValue) {
+        $jitterValue = $ping.jitter
+    }
+
     $success = [bool]($ping.success -and $speedtest.success)
 
     $rawOutput = [ordered]@{
@@ -514,8 +526,8 @@ function Invoke-AgentCycle {
 
     $payload = [ordered]@{
         throughput = $speedtest.throughput
-        delay = $speedtest.delay
-        jitter = $speedtest.jitter
+        delay = $delay
+        jitter = $jitterValue
         packet_loss = $packetLoss
         ping = $ping.ping
         success = $success

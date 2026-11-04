@@ -76,7 +76,7 @@ class AuthController extends Controller
 
             return User::create([
                 'school_id' => $school->id,
-                'role' => 'sekolah',
+                'role' => 'user',
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'password' => $validated['password'],
@@ -89,7 +89,7 @@ class AuthController extends Controller
 
         return redirect()
             ->route('dashboard')
-            ->with('success', 'Akun sekolah berhasil dibuat. Unduh agent di dashboard untuk mulai monitoring.');
+            ->with('success', 'Akun berhasil dibuat. Unduh agent di dashboard untuk mulai monitoring.');
     }
 
     public function logout(Request $request): RedirectResponse

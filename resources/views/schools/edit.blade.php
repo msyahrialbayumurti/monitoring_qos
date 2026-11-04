@@ -889,19 +889,27 @@
 
                     <div style="margin-top:12px;">
                         <a
-                            href="{{ route('agent.setup', $school) }}"
+                            href="{{ route('agent.setup.cmd', $school) }}"
                             class="school-edit-btn"
                             style="display:inline-flex; align-items:center; justify-content:center; text-decoration:none;"
                         >
                             Download Installer Agent
+                        </a>
+
+                        <a
+                            href="{{ route('agent.setup', $school) }}"
+                            style="display:inline-block; margin-top:9px; color:#496486; font-size:11px; text-decoration:underline;"
+                        >
+                            Download script PowerShell (.ps1)
                         </a>
                     </div>
 
                     <div class="school-agent-steps">
                         <strong>Cara pasang agent otomatis:</strong>
                         <ol>
-                            <li>Klik <strong>Download Installer Agent</strong>, lalu pindahkan file ke PC sekolah.</li>
-                            <li>Jalankan installer sebagai Administrator. Token dan enrollment diisi otomatis.</li>
+                            <li>Klik <strong>Download Installer Agent</strong>, lalu pindahkan file <code>.cmd</code> ke PC sekolah.</li>
+                            <li>Klik dua kali file installer, lalu pilih <strong>Yes</strong> saat Windows meminta izin Administrator.</li>
+                            <li>Jika muncul peringatan Windows, pilih <strong>More info</strong> lalu <strong>Run anyway</strong>.</li>
                             <li>Agent langsung melakukan pengukuran pertama dan memasang jadwal tiap 5 menit.</li>
                             <li>Jika <code>speedtest.exe</code> belum ada, letakkan di folder yang sama dengan installer sebelum dijalankan.</li>
                         </ol>

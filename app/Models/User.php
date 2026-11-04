@@ -49,14 +49,4 @@ class User extends Authenticatable
     {
         return $this->belongsTo(School::class);
     }
-
-    public function isAdmin(): bool
-    {
-        return $this->role === 'admin';
-    }
-
-    public function isSchool(): bool
-    {
-        return $this->role === 'sekolah';
-    }
 }

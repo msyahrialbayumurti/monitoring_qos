@@ -366,9 +366,9 @@
 <div class="settings-page">
     <header class="settings-hero">
         <div>
-            <div class="settings-eyebrow">Administrasi Sistem</div>
+            <div class="settings-eyebrow">Pengaturan Akun</div>
             <h1>Pengaturan NETMONITOR</h1>
-            <p>Kelola jadwal pengukuran QoS dan penyegaran dashboard. Perubahan pengaturan tetap mengikuti mekanisme penyimpanan aplikasi.</p>
+            <p>Setelan berikut hanya berlaku untuk akun ini. Kelola jadwal pengukuran QoS dan penyegaran dashboard sesuai kebutuhan akun Anda.</p>
         </div>
         <div class="settings-date">{{ now()->translatedFormat('d F Y') }}</div>
     </header>

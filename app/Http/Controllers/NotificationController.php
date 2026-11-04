@@ -12,24 +12,15 @@ class NotificationController extends Controller
     {
         $user = $request->user();
 
-        $isSchoolUser = $user && $user->isSchool();
+        $schoolId = $user?->school_id;
 
-        $schools = $isSchoolUser
-            ? \App\Models\School::whereKey($user->school_id)->get()
-            : \App\Models\School::orderBy('nama_sekolah')->get();
-
-        $schoolId = $isSchoolUser
-            ? $user->school_id
-            : $request->get('school_id');
+        $schools = $schoolId
+            ? \App\Models\School::whereKey($schoolId)->get()
+            : collect();
 
         $query = QosMeasurement::with('school')
+            ->where('school_id', $schoolId)
             ->orderByDesc('measured_at');
-
-        if ($isSchoolUser) {
-            $query->where('school_id', $user->school_id);
-        } elseif ($schoolId) {
-            $query->where('school_id', $schoolId);
-        }
 
         $measurements = $query->paginate(15)->withQueryString();
 

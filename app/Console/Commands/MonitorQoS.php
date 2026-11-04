@@ -4,6 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\School;
 use App\Models\QosMeasurement;
+use App\Models\User;
+use App\Models\UserSetting;
 use App\Services\QoSMeasurementService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -11,13 +13,16 @@ use Throwable;
 
 class MonitorQoS extends Command
 {
-    protected $signature = 'qos:monitor';
+    protected $signature = 'qos:monitor
+        {--force : Abaikan interval dan ukur semua sekolah}';
 
     protected $description =
-        'Melakukan monitoring QoS otomatis pada seluruh sekolah aktif';
+        'Melakukan monitoring QoS otomatis pada sekolah yang sudah waktunya diukur';
 
     public function handle(QoSMeasurementService $qos): int
     {
+        $force = (bool) $this->option('force');
+
         $schools = School::where('status', true)->get();
 
         if ($schools->isEmpty()) {
@@ -42,6 +47,36 @@ class MonitorQoS extends Command
                 $school->ip_target .
                 ']'
             );
+
+            /*
+            |--------------------------------------------------------------------------
+            | Ikuti interval milik pemilik sekolah
+            |--------------------------------------------------------------------------
+            */
+
+            $interval = $this->intervalForSchool($school);
+
+            if (
+                ! $force
+                && $school->agent_last_seen_at
+                && $school->agent_last_seen_at->gte(now()->subMinutes(10))
+            ) {
+                $this->line(
+                    '  Dilewati: agent sekolah aktif, pengukuran dilakukan oleh agent.'
+                );
+
+                continue;
+            }
+
+            if (! $force && ! $this->isDue($school, $interval)) {
+                $this->line(
+                    '  Dilewati: belum waktunya diukur (interval ' .
+                    $interval .
+                    ' menit).'
+                );
+
+                continue;
+            }
 
             /*
             |--------------------------------------------------------------------------
@@ -199,5 +234,45 @@ class MonitorQoS extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Interval monitoring milik akun pemilik sekolah.
+     */
+    private function intervalForSchool(School $school): int
+    {
+        $ownerId = User::query()
+            ->where('school_id', $school->id)
+            ->value('id');
+
+        $interval = (int) UserSetting::getForUser(
+            $ownerId,
+            'monitoring_interval',
+            '5'
+        );
+
+        return in_array($interval, [1, 5, 10, 15], true)
+            ? $interval
+            : 5;
+    }
+
+    /**
+     * Apakah sekolah sudah waktunya diukur berdasarkan interval akun?
+     */
+    private function isDue(School $school, int $interval): bool
+    {
+        $lastMeasurement = QosMeasurement::query()
+            ->where('school_id', $school->id)
+            ->latest('measured_at')
+            ->first();
+
+        if (! $lastMeasurement) {
+            return true;
+        }
+
+        return $lastMeasurement->measured_at
+            ->copy()
+            ->addMinutes($interval)
+            ->lte(now());
     }
 }

@@ -283,10 +283,25 @@ class QoSMeasurementService
      */
     private function runSpeedtest(): array
     {
-        $speedtestPath = env(
-            'SPEEDTEST_PATH',
-            'C:/Users/Lenovo/Downloads/ookla-speedtest-1.2.0-win64/speedtest.exe'
-        );
+        $speedtestPath = env('SPEEDTEST_PATH');
+
+        if (blank($speedtestPath)) {
+            $candidates = [
+                storage_path('app/tools/speedtest.exe'),
+                'C:/Users/Lenovo/Downloads/ookla-speedtest-1.2.0-win64/speedtest.exe',
+            ];
+
+            foreach ($candidates as $candidate) {
+                if (file_exists($candidate)) {
+                    $speedtestPath = $candidate;
+                    break;
+                }
+            }
+
+            if (blank($speedtestPath)) {
+                $speedtestPath = $candidates[0];
+            }
+        }
 
         /*
          * Pastikan file Speedtest tersedia.

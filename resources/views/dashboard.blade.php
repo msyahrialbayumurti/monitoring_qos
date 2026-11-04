@@ -229,6 +229,13 @@
             font-weight: 600;
         }
 
+        .school-agent-status {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
         .school-agent-actions {
             display: flex;
             align-items: center;
@@ -1569,49 +1576,9 @@
 
 
 
-                @if(auth()->user()?->isAdmin())
-
-                    <div class="school-select">
-
-                        Sekolah:
-
-                        <form method="GET"
-                              action="{{ route('dashboard') }}"
-                              style="display:inline;">
-
-                            <select name="school_id"
-                                    onchange="this.form.submit()">
-
-                                @foreach($schools as $school)
-
-                                    <option
-                                        value="{{ $school->id }}"
-
-                                        @selected(
-                                            $selectedSchool &&
-                                            $selectedSchool->id == $school->id
-                                        )
-                                    >
-
-                                        {{ $school->nama_sekolah }}
-
-                                    </option>
-
-                                @endforeach
-
-                            </select>
-
-                        </form>
-
-                    </div>
-
-                @else
-
-                    <div class="school-select-static">
-                        Sekolah: <strong>{{ $selectedSchool?->nama_sekolah ?? '-' }}</strong>
-                    </div>
-
-                @endif
+                <div class="school-select-static">
+                    Sekolah: <strong>{{ $selectedSchool?->nama_sekolah ?? '-' }}</strong>
+                </div>
 
             </div>
 
@@ -1684,20 +1651,22 @@
 
         </div>
 
-        @if($selectedSchool->agent_last_seen_at)
-            <div class="school-agent-note">
-                Monitoring oleh agent sekolah
-                <small>
-                    Terakhir terhubung {{ $selectedSchool->agent_last_seen_at->diffForHumans() }}
-                </small>
-            </div>
-        @else
+        <div class="school-agent-status">
+            @if($selectedSchool->agent_last_seen_at)
+                <div class="school-agent-note">
+                    Monitoring oleh agent sekolah
+                    <small>
+                        Terakhir terhubung {{ $selectedSchool->agent_last_seen_at->diffForHumans() }}
+                    </small>
+                </div>
+            @endif
+
             <div class="school-agent-actions">
-                <a href="{{ route('agent.setup', $selectedSchool) }}" class="school-test-btn">
-                    Download Agent
+                <a href="{{ route('agent.setup.cmd', $selectedSchool) }}" class="school-test-btn">
+                    Download Installer Agent
                 </a>
 
-                @if(auth()->user()?->isAdmin() && $selectedSchool->ip_target)
+                @if($selectedSchool->ip_target)
                     <form
                         action="{{ route('qos.test', $selectedSchool) }}"
                         method="POST"
@@ -1717,7 +1686,7 @@
                     </form>
                 @endif
             </div>
-        @endif
+        </div>
 
     </div>
 
@@ -2870,7 +2839,7 @@
     });
 
     // Refresh dashboard mengikuti pengaturan sistem (detik).
-    const dashboardRefreshSeconds = @json((int) (\App\Models\Setting::where('key', 'dashboard_refresh_interval')->value('value') ?? 30));
+    const dashboardRefreshSeconds = @json($dashboardRefreshInterval ?? 30);
     setInterval(function () {
         window.location.reload();
     }, Math.max(15, dashboardRefreshSeconds) * 1000);
