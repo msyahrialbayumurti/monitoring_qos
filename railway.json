@@ -1,0 +1,17 @@
+{
+    "$schema": "https://railway.com/railway.schema.json",
+    "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "Dockerfile"
+    },
+    "deploy": {
+        "preDeployCommand": [
+            "php artisan migrate --force"
+        ],
+        "startCommand": "sh -c 'php artisan schedule:work & exec php artisan serve --host=0.0.0.0 --port=${PORT:-8080}'",
+        "healthcheckPath": "/login",
+        "healthcheckTimeout": 300,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 10
+    }
+}

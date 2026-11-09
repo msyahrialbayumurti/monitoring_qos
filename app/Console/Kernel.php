@@ -19,6 +19,10 @@ class Kernel extends ConsoleKernel
         $schedule->command('qos:monitor')
             ->everyMinute()
             ->withoutOverlapping();
+
+        $schedule->command('agents:check-offline')
+            ->everyFiveMinutes()
+            ->withoutOverlapping();
     }
 
     protected function commands()

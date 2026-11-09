@@ -1313,7 +1313,7 @@
             content: 'SELAMAT DATANG DI';
             display: block;
             margin-bottom: 8px;
-            color: #6282b3;
+            color: #9fc6ff;
             font-size: 10px;
             line-height: 1.4;
             letter-spacing: 1.8px;
@@ -1488,8 +1488,9 @@
 
 
 /* ===== PERBAIKAN KONTRAS JUDUL DASHBOARD ===== */
-.page-title h1 {
+.app-layout > .app-content .page-title h1 {
     color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
     font-size: clamp(28px, 3vw, 38px) !important;
     font-weight: 800 !important;
     line-height: 1.25 !important;
@@ -1498,8 +1499,14 @@
     opacity: 1 !important;
 }
 
-.page-title p {
-    color: #e2edff !important;
+.app-layout > .app-content .page-title h1::before {
+    color: #9fc6ff !important;
+    -webkit-text-fill-color: #9fc6ff !important;
+}
+
+.app-layout > .app-content .page-title p {
+    color: #dbe9ff !important;
+    -webkit-text-fill-color: #dbe9ff !important;
     font-size: 14px !important;
     line-height: 1.7 !important;
     opacity: 1 !important;
@@ -1513,8 +1520,8 @@
 }
 
 /* Teks kecil di atas judul */
-.page-title .eyebrow,
-.page-title .welcome-label {
+.app-layout > .app-content .page-title .eyebrow,
+.app-layout > .app-content .page-title .welcome-label {
     color: #a8ceff !important;
     font-weight: 800 !important;
     letter-spacing: 2px !important;
@@ -1593,8 +1600,7 @@
        @if($selectedSchool)
 
     @php
-        $agentOnline = $selectedSchool->agent_last_seen_at
-            && $selectedSchool->agent_last_seen_at->gte(now()->subMinutes(10));
+        $agentOnline = $selectedSchool->agentIsOnline();
     @endphp
 
     <div class="school-info-panel">
@@ -1661,26 +1667,33 @@
                 </div>
             @endif
 
+            @if($selectedSchool->measure_requested_at)
+                <div class="school-agent-note">
+                    Permintaan Tes QoS dikirim {{ $selectedSchool->measure_requested_at->diffForHumans() }}
+                    <small>Menunggu agent melakukan pengukuran.</small>
+                </div>
+            @endif
+
             <div class="school-agent-actions">
                 <a href="{{ route('agent.setup.cmd', $selectedSchool) }}" class="school-test-btn">
                     Download Installer Agent
                 </a>
 
-                @if($selectedSchool->ip_target)
+                @if($selectedSchool->ip_target && $selectedSchool->agent_last_seen_at)
                     <form
                         action="{{ route('qos.test', $selectedSchool) }}"
                         method="POST"
                         style="margin:0;"
                         onsubmit="
                             this.querySelector('button').disabled = true;
-                            this.querySelector('button').innerHTML = 'Sedang melakukan pengukuran...';
+                            this.querySelector('button').innerHTML = 'Mengirim permintaan...';
                         "
                     >
 
                         @csrf
 
                         <button type="submit" class="school-test-btn">
-                            Tes QoS Sekarang
+                            Minta Agent Tes QoS
                         </button>
 
                     </form>

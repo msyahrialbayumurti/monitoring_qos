@@ -470,6 +470,32 @@ function Invoke-AgentCycle {
         Write-AgentLog ('Heartbeat gagal: {0}' -f $_.Exception.Message)
     }
 
+    $measureNow = $false
+    $due = $true
+
+    if ($serverConfig) {
+        $measureNow = [bool]$serverConfig.measure_now
+
+        if (-not [string]::IsNullOrWhiteSpace([string]$serverConfig.last_measurement_at)) {
+            try {
+                $lastMeasurement = [datetimeoffset]::Parse([string]$serverConfig.last_measurement_at)
+                $elapsed = ((Get-Date).ToUniversalTime() - $lastMeasurement.UtcDateTime).TotalSeconds
+                $due = $elapsed -ge [int][Math]::Max(30, [int]$script:Config.IntervalSeconds)
+            } catch {
+                $due = $true
+            }
+        }
+    }
+
+    if (-not $measureNow -and -not $due) {
+        Write-AgentLog 'Belum waktunya mengukur. Heartbeat tetap dikirim.'
+        return
+    }
+
+    if ($measureNow) {
+        Write-AgentLog 'Permintaan Tes QoS dari dashboard diterima.'
+    }
+
     $target = [string]$script:Config.PingTarget
 
     if ([string]::IsNullOrWhiteSpace($target) -and $serverConfig) {

@@ -664,29 +664,7 @@
 
 
         
-/* Perbaikan kontras judul dashboard dan semua halaman */
-html body .app-layout > .app-content h1,
-html body .app-layout > .app-content .dashboard-header h1,
-html body .app-layout > .app-content .page-header h1,
-html body .app-layout > .app-content .dashboard-title {
-    color: #ffffff !important;
-    -webkit-text-fill-color: #ffffff !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    text-shadow: 0 2px 8px rgba(0, 25, 70, 0.45) !important;
-}
-
-/* Label sambutan dan deskripsi tetap kontras */
-html body .app-layout > .app-content .dashboard-header,
-html body .app-layout > .app-content .page-header {
-    color: #eaf3ff;
-}
-
-html body .app-layout > .app-content .dashboard-header p,
-html body .app-layout > .app-content .page-header p {
-    color: #eaf3ff !important;
-    opacity: 1 !important;
-}
+/* Semua header halaman berlatar terang, jadi teks judul/deskripsi memakai warna gelap. */
 
     </style>
 

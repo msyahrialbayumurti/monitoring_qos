@@ -22,7 +22,7 @@ $action = New-ScheduledTaskAction `
 $trigger = New-ScheduledTaskTrigger `
     -Once `
     -At (Get-Date).AddMinutes(1) `
-    -RepetitionInterval (New-TimeSpan -Minutes $IntervalMinutes) `
+    -RepetitionInterval (New-TimeSpan -Minutes 1) `
     -RepetitionDuration (New-TimeSpan -Days 3650)
 
 $settings = New-ScheduledTaskSettingsSet `
@@ -46,4 +46,4 @@ Register-ScheduledTask `
     -Description 'Menjalankan agent monitoring QoS NETMONITOR.' `
     -Force | Out-Null
 
-Write-Host ('Task "{0}" berhasil dibuat. Agent berjalan setiap {1} menit.' -f $TaskName, $IntervalMinutes)
+Write-Host ('Task "{0}" berhasil dibuat. Agent memeriksa perintah setiap 1 menit; pengukuran mengikuti interval {1} menit.' -f $TaskName, $IntervalMinutes)

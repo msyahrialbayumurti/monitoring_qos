@@ -930,7 +930,7 @@
     }
 
 
-/* ===== PERBAIKAN KONTRAS HALAMAN MONITORING QoS ===== */
+/* Header monitoring berada di atas latar gelap: gunakan teks terang. */
 .monitoring-page h1,
 .monitoring-page .page-title h1,
 .monitoring-page .header h1 {
@@ -943,14 +943,17 @@
 .monitoring-page p,
 .monitoring-page .page-title p,
 .monitoring-page .header p {
-    color: #e2edff !important;
+    color: #dbe9ff !important;
     opacity: 1 !important;
 }
 
-/* Jika judul tidak memakai class monitoring-page */
-.monitoring-header h1,
-.monitoring-header p {
+.monitoring-header h1 {
     color: #ffffff !important;
+    opacity: 1 !important;
+}
+
+.monitoring-header p {
+    color: #dbe9ff !important;
     opacity: 1 !important;
 }
 

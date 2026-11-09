@@ -2,17 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\QosMeasurement;
 use App\Models\School;
-use App\Services\QoSMeasurementService;
 use Illuminate\Http\RedirectResponse;
 
 class QosTestController extends Controller
 {
-    public function store(
-        School $school,
-        QoSMeasurementService $qos
-    ): RedirectResponse {
+    public function store(School $school): RedirectResponse
+    {
         $user = auth()->user();
 
         if (
@@ -23,83 +19,60 @@ class QosTestController extends Controller
         }
 
         if (blank($school->ip_target)) {
-            return redirect()
-                ->route('dashboard', [
-                    'school_id' => $school->id,
-                ])
-                ->with(
-                    'error',
-                    'IP target belum tersedia. Pasang agent sekolah agar gateway terdeteksi otomatis.'
-                );
+            return $this->redirectWithStatus(
+                $school,
+                'error',
+                'IP target belum tersedia. Pasang agent sekolah agar gateway terdeteksi otomatis.'
+            );
         }
 
-        try {
+        if (! $school->agent_last_seen_at) {
+            return $this->redirectWithStatus(
+                $school,
+                'error',
+                'Agent sekolah belum pernah terhubung. Instal agent terlebih dahulu.'
+            );
+        }
 
+        if (! $school->agentIsOnline()) {
+            return $this->redirectWithStatus(
+                $school,
+                'error',
+                'Agent sekolah sedang offline. Permintaan tes tidak dikirim.'
+            );
+        }
 
-$result = $qos->measure(
-    $school->ip_target
-);
+        if (
+            $school->measure_requested_at !== null &&
+            $school->measure_requested_at->gt(now()->subMinutes(10))
+        ) {
+            return $this->redirectWithStatus(
+                $school,
+                'success',
+                'Permintaan Tes QoS sudah dikirim dan sedang menunggu agent.'
+            );
+        }
 
-            
-if (!$result['success']) {
-    return redirect()
-        ->route('dashboard', [
-            'school_id' => $school->id,
-        ])
-        ->with(
-            'error',
-            'Tes QoS gagal. Speedtest tidak menghasilkan data yang valid. Silakan coba lagi.'
+        $school->forceFill([
+            'measure_requested_at' => now(),
+        ])->save();
+
+        return $this->redirectWithStatus(
+            $school,
+            'success',
+            'Permintaan Tes QoS dikirim ke agent. Hasil akan muncul setelah agent menyelesaikan pengukuran.'
         );
-}
+    }
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | Simpan hasil pengukuran
-            |--------------------------------------------------------------------------
-            */
-            $measurement = QosMeasurement::create([
+    private function redirectWithStatus(
+        School $school,
+        string $type,
+        string $message
+    ): RedirectResponse {
+        return redirect()
+            ->route('dashboard', [
                 'school_id' => $school->id,
-                'throughput' => $result['throughput'],
-                'delay' => $result['delay'],
-                'jitter' => $result['jitter'],
-                'packet_loss' => $result['packet_loss'],
-                'ping' => $result['ping'],
-                'success' => $result['success'],
-                'raw_output' => $result['raw_output'],
-                'measured_at' => now(),
-            ]);
-
-            /*
-            |--------------------------------------------------------------------------
-            | Tandai hasil ini sebagai hasil Tes QoS yang ditampilkan
-            | pada Dashboard.
-            |--------------------------------------------------------------------------
-            */
-            session([
-                'qos_dashboard_measurement_id_' . $school->id
-                    => $measurement->id,
-            ]);
-
-            return redirect()
-                ->route('dashboard', [
-                    'school_id' => $school->id,
-                ])
-                ->with(
-                    'success',
-                    'Tes QoS berhasil dilakukan dan hasil telah disimpan.'
-                );
-
-        } catch (\Throwable $e) {
-
-            return redirect()
-                ->route('dashboard', [
-                    'school_id' => $school->id,
-                ])
-                ->with(
-                    'error',
-                    'Tes QoS gagal: ' . $e->getMessage()
-                );
-        }
+            ])
+            ->with($type, $message);
     }
 }

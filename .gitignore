@@ -27,3 +27,7 @@ yarn-error.log
 /agent/buffer.jsonl
 /agent/agent.log
 /agent/agent.log.1
+
+/monitoring_qos.sql
+/database/database.sql
+/database/dumps/

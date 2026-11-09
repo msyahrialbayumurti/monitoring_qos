@@ -200,6 +200,113 @@
         box-shadow: 0 0 0 4px rgba(39,117,238,.11);
     }
 
+    .settings-form-group input[type="text"] {
+        display: block;
+        width: 100%;
+        min-height: 45px;
+        padding: 0 13px;
+        border: 1px solid #d3e0f2;
+        border-radius: 11px;
+        background: #fbfdff;
+        color: #183967;
+        font: inherit;
+        font-size: 12px;
+        outline: none;
+        transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+    }
+
+    .settings-form-group input[type="text"]:focus {
+        border-color: #3984f6;
+        background: #fff;
+        box-shadow: 0 0 0 4px rgba(39,117,238,.11);
+    }
+
+    .settings-toggle {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 13px 14px;
+        border: 1px solid #dbe8fb;
+        border-radius: 12px;
+        background: #f8fbff;
+        cursor: pointer;
+    }
+
+    .settings-toggle input {
+        flex-shrink: 0;
+        width: 16px;
+        height: 16px;
+        margin-top: 2px;
+        accent-color: #1769e8;
+    }
+
+    .settings-toggle span {
+        color: #33547f;
+        font-size: 11px;
+        line-height: 1.6;
+    }
+
+    .settings-toggle strong {
+        display: block;
+        margin-bottom: 3px;
+        color: #173968;
+        font-size: 11px;
+    }
+
+    .settings-inline-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 9px;
+        padding-top: 17px;
+        border-top: 1px solid #eaf0fa;
+    }
+
+    .settings-test {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 43px;
+        padding: 0 17px;
+        border: 1px solid #c8dbf7;
+        border-radius: 11px;
+        background: #f3f8ff;
+        color: #1769e8;
+        font-size: 12px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: background .2s ease, border-color .2s ease;
+    }
+
+    .settings-test:hover {
+        border-color: #9dc2f5;
+        background: #e9f2ff;
+    }
+
+    .settings-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 11px;
+        margin-bottom: 16px;
+        border: 1px solid;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 800;
+    }
+
+    .settings-badge-ok {
+        color: #166534;
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+    }
+
+    .settings-badge-warn {
+        color: #92400e;
+        background: #fffbeb;
+        border-color: #fde68a;
+    }
+
     .settings-help {
         display: block;
         margin-top: 8px;
@@ -368,7 +475,7 @@
         <div>
             <div class="settings-eyebrow">Pengaturan Akun</div>
             <h1>Pengaturan NETMONITOR</h1>
-            <p>Setelan berikut hanya berlaku untuk akun ini. Kelola jadwal pengukuran QoS dan penyegaran dashboard sesuai kebutuhan akun Anda.</p>
+            <p>Setelan berikut hanya berlaku untuk akun ini. Kelola jadwal pengukuran QoS, penyegaran dashboard, dan notifikasi WhatsApp sesuai kebutuhan akun Anda.</p>
         </div>
         <div class="settings-date">{{ now()->translatedFormat('d F Y') }}</div>
     </header>
@@ -403,6 +510,7 @@
     @endunless
 
     <div class="settings-layout">
+        <div>
         <section class="settings-card">
             <div class="settings-card-header">
                 <div class="settings-card-icon" aria-hidden="true">⚙</div>
@@ -450,6 +558,70 @@
                 </form>
             </div>
         </section>
+
+        <section class="settings-card">
+            <div class="settings-card-header">
+                <div class="settings-card-icon" aria-hidden="true">WA</div>
+                <div>
+                    <h2>Notifikasi WhatsApp</h2>
+                    <p>Kirim peringatan otomatis ke WhatsApp saat kondisi QoS berubah atau pengukuran gagal.</p>
+                </div>
+            </div>
+
+            <div class="settings-card-body">
+                @if ($fonnteConfigured)
+                    <span class="settings-badge settings-badge-ok">Token Fonnte terpasang</span>
+                @else
+                    <span class="settings-badge settings-badge-warn">Token Fonnte belum diatur di .env</span>
+                @endif
+
+                <form method="POST" action="{{ route('settings.whatsapp.update') }}">
+                    @csrf
+                    @method('PUT')
+
+                    <div class="settings-form-group">
+                        <label for="whatsapp_number">Nomor WhatsApp Penerima</label>
+                        <input
+                            type="text"
+                            id="whatsapp_number"
+                            name="whatsapp_number"
+                            value="{{ old('whatsapp_number', $whatsappNumber) }}"
+                            placeholder="08xxxxxxxxxx"
+                            autocomplete="tel"
+                        >
+                        <small class="settings-help">Gunakan format 08xxxxxxxxxx atau 628xxxxxxxxxx. Nomor ini hanya menerima notifikasi untuk akun Anda.</small>
+                    </div>
+
+                    <div class="settings-form-group">
+                        <label class="settings-toggle" for="whatsapp_notifications">
+                            <input
+                                type="checkbox"
+                                id="whatsapp_notifications"
+                                name="whatsapp_notifications"
+                                value="1"
+                                @checked(old('whatsapp_notifications', $whatsappNotifications))
+                            >
+                            <span>
+                                <strong>Aktifkan notifikasi WhatsApp</strong>
+                                Notif dikirim saat kondisi berubah (mis. BAIK ke BURUK), kembali membaik, atau pengukuran gagal.
+                            </span>
+                        </label>
+                    </div>
+
+                    <div class="settings-inline-actions">
+                        <button type="submit" class="settings-save">Simpan Notifikasi</button>
+                    </div>
+                </form>
+
+                <form method="POST" action="{{ route('settings.whatsapp.test') }}" style="margin-top:12px;">
+                    @csrf
+                    <div class="settings-inline-actions" style="border-top:0;padding-top:0;">
+                        <button type="submit" class="settings-test">Tes Kirim WhatsApp</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+        </div>
 
         <div>
             <section class="settings-card">

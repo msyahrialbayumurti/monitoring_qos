@@ -96,6 +96,11 @@ class AgentController extends Controller
             $interval = 5;
         }
 
+        $lastMeasurement = QosMeasurement::query()
+            ->where('school_id', $school->id)
+            ->latest('measured_at')
+            ->first();
+
         return response()->json([
             'school' => [
                 'id' => $school->id,
@@ -106,6 +111,9 @@ class AgentController extends Controller
             ],
             'monitoring_interval_minutes' => $interval,
             'recommended_interval_seconds' => max(60, $interval * 60),
+            'measure_now' => $school->measure_requested_at !== null,
+            'measure_requested_at' => $school->measure_requested_at?->toIso8601String(),
+            'last_measurement_at' => $lastMeasurement?->measured_at?->toIso8601String(),
             'server_time' => now()->toIso8601String(),
         ]);
     }
@@ -175,6 +183,10 @@ class AgentController extends Controller
             'raw_output' => $validated['raw_output'] ?? null,
             'measured_at' => now(),
         ]);
+
+        if ($school->measure_requested_at !== null) {
+            $school->measure_requested_at = null;
+        }
 
         $this->updatePresence($school, [
             'gateway' => $validated['gateway'] ?? null,

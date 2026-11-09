@@ -111,6 +111,12 @@ Route::middleware('auth')->group(function () {
     Route::put('/pengaturan', [SettingsController::class, 'update'])
         ->name('settings.update');
 
+    Route::put('/pengaturan/whatsapp', [SettingsController::class, 'updateWhatsApp'])
+        ->name('settings.whatsapp.update');
+
+    Route::post('/pengaturan/test-whatsapp', [SettingsController::class, 'testWhatsApp'])
+        ->name('settings.whatsapp.test');
+
     /*
     |--------------------------------------------------------------------------
     | Data Sekolah milik akun

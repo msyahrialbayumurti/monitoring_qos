@@ -60,7 +60,11 @@ class AgentSetupController extends Controller
 
     public function speedtest(): Response
     {
-        $path = storage_path('app/tools/speedtest.exe');
+        $path = base_path('agent/speedtest.exe');
+
+        if (! is_file($path)) {
+            $path = storage_path('app/tools/speedtest.exe');
+        }
 
         abort_unless(is_file($path), 404, 'Speedtest CLI tidak tersedia di server.');
 

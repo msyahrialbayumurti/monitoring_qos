@@ -314,6 +314,10 @@
     @media (max-width: 800px) { .school-overview { grid-template-columns:1fr; gap:12px; } .overview-inactive { grid-column:auto; } .overview-card { min-height:110px; padding:18px; } .page-header { align-items:flex-start; } }
     @media (prefers-reduced-motion: reduce) { .btn-primary,.school-table tbody tr,.action-link { transition:none; } }
 
+    .app-layout > .app-content .school-page .page-header h1 { color:#ffffff !important; text-shadow:0 2px 8px rgba(0,0,0,.35); }
+    .app-layout > .app-content .school-page .page-header p { color:#dbe9ff !important; }
+    .app-layout > .app-content .school-page .school-eyebrow { color:#9fc6ff !important; }
+
 </style>
 @endsection
 

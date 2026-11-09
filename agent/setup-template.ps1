@@ -100,7 +100,7 @@ if ($LASTEXITCODE -ne 0) {
     throw 'Agent gagal melakukan enrollment. Periksa koneksi internet dan URL server.'
 }
 
-Write-Host ('Memasang jadwal otomatis setiap {0} menit...' -f __INTERVAL_MINUTES__) -ForegroundColor Cyan
+Write-Host ('Memasang pengecekan otomatis setiap 1 menit (pengukuran setiap {0} menit)...' -f __INTERVAL_MINUTES__) -ForegroundColor Cyan
 
 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $taskInstallerPath -ConfigPath $configPath -IntervalMinutes __INTERVAL_MINUTES__
 

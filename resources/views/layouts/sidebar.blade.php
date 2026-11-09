@@ -328,6 +328,27 @@
             transition: none !important;
         }
     }
+
+    .app-layout > .sidebar .menu a,
+    .app-layout > .sidebar .menu a .menu-label {
+        color: #dbe9ff !important;
+        -webkit-text-fill-color: #dbe9ff !important;
+    }
+
+    .app-layout > .sidebar .menu a .menu-icon {
+        color: #9cc4ff !important;
+        -webkit-text-fill-color: #9cc4ff !important;
+    }
+
+    .app-layout > .sidebar .menu a:hover,
+    .app-layout > .sidebar .menu a.active,
+    .app-layout > .sidebar .menu a:hover .menu-label,
+    .app-layout > .sidebar .menu a.active .menu-label,
+    .app-layout > .sidebar .menu a:hover .menu-icon,
+    .app-layout > .sidebar .menu a.active .menu-icon {
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
+    }
 </style>
 
 <aside class="sidebar">

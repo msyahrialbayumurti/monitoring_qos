@@ -24,6 +24,8 @@ class School extends Model
         'agent_public_ip',
         'agent_isp',
         'agent_version',
+        'measure_requested_at',
+        'agent_offline_notified_at',
     ];
 
     protected $casts = [
@@ -31,6 +33,8 @@ class School extends Model
         'status' => 'boolean',
         'agent_last_seen_at' => 'datetime',
         'agent_enrollment_expires_at' => 'datetime',
+        'measure_requested_at' => 'datetime',
+        'agent_offline_notified_at' => 'datetime',
     ];
 
     protected static function booted(): void

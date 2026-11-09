@@ -56,13 +56,9 @@ class MonitorQoS extends Command
 
             $interval = $this->intervalForSchool($school);
 
-            if (
-                ! $force
-                && $school->agent_last_seen_at
-                && $school->agent_last_seen_at->gte(now()->subMinutes(10))
-            ) {
+            if (! $force && $school->agent_last_seen_at) {
                 $this->line(
-                    '  Dilewati: agent sekolah aktif, pengukuran dilakukan oleh agent.'
+                    '  Dilewati: sekolah memakai agent, pengukuran dilakukan oleh agent.'
                 );
 
                 continue;

@@ -125,7 +125,10 @@ class AgentEnrollmentTest extends TestCase
 
     public function test_speedtest_binary_is_served_to_agents(): void
     {
-        if (! is_file(storage_path('app/tools/speedtest.exe'))) {
+        if (
+            ! is_file(base_path('agent/speedtest.exe'))
+            && ! is_file(storage_path('app/tools/speedtest.exe'))
+        ) {
             $this->markTestSkipped('Speedtest CLI tidak tersedia di server.');
         }
 
