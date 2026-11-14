@@ -229,6 +229,42 @@
             font-weight: 600;
         }
 
+        .school-agent-note-warning {
+            border-color: #fde68a;
+            background: #fffbeb;
+            color: #92400e;
+            white-space: normal;
+            max-width: 330px;
+        }
+
+        .school-agent-note-warning small {
+            color: #a16207;
+            white-space: normal;
+            line-height: 1.45;
+        }
+
+        .dashboard-flash {
+            margin: 0 0 14px;
+            padding: 12px 15px;
+            border: 1px solid;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1.5;
+        }
+
+        .dashboard-flash-success {
+            color: #166534;
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+
+        .dashboard-flash-error {
+            color: #991b1b;
+            background: #fef2f2;
+            border-color: #fecaca;
+        }
+
         .school-agent-status {
             display: flex;
             flex-direction: column;
@@ -1591,6 +1627,18 @@
 
         </div>
 
+        @if(session('success'))
+            <div class="dashboard-flash dashboard-flash-success" role="status">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="dashboard-flash dashboard-flash-error" role="alert">
+                {{ session('error') }}
+            </div>
+        @endif
+
 
 
         <!-- =================================================
@@ -1601,6 +1649,9 @@
 
     @php
         $agentOnline = $selectedSchool->agentIsOnline();
+        $speedtestCooldownUntil = $selectedSchool->agent_speedtest_cooldown_until;
+        $speedtestCooldownActive = $speedtestCooldownUntil !== null
+            && $speedtestCooldownUntil->isFuture();
     @endphp
 
     <div class="school-info-panel">
@@ -1674,12 +1725,27 @@
                 </div>
             @endif
 
+            @if($speedtestCooldownActive)
+                <div class="school-agent-note school-agent-note-warning">
+                    Speedtest dibatasi oleh Ookla
+                    <small>
+                        {{ $selectedSchool->agent_speedtest_notice ?: 'Pengukuran throughput ditunda sementara.' }}
+                        Dicoba lagi setelah {{ $speedtestCooldownUntil->format('d M Y H:i') }}.
+                        Ping dan heartbeat tetap berjalan.
+                    </small>
+                </div>
+            @endif
+
             <div class="school-agent-actions">
                 <a href="{{ route('agent.setup.cmd', $selectedSchool) }}" class="school-test-btn">
                     Download Installer Agent
                 </a>
 
-                @if($selectedSchool->ip_target && $selectedSchool->agent_last_seen_at)
+                @if($speedtestCooldownActive)
+                    <button type="button" class="school-test-btn" disabled>
+                        Speedtest Cooldown
+                    </button>
+                @elseif($selectedSchool->ip_target && $selectedSchool->agent_last_seen_at)
                     <form
                         action="{{ route('qos.test', $selectedSchool) }}"
                         method="POST"

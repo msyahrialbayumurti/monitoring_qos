@@ -26,6 +26,8 @@ class School extends Model
         'agent_version',
         'measure_requested_at',
         'agent_offline_notified_at',
+        'agent_speedtest_cooldown_until',
+        'agent_speedtest_notice',
     ];
 
     protected $casts = [
@@ -35,6 +37,7 @@ class School extends Model
         'agent_enrollment_expires_at' => 'datetime',
         'measure_requested_at' => 'datetime',
         'agent_offline_notified_at' => 'datetime',
+        'agent_speedtest_cooldown_until' => 'datetime',
     ];
 
     protected static function booted(): void

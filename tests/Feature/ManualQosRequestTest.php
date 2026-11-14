@@ -74,6 +74,41 @@ class ManualQosRequestTest extends TestCase
         $this->assertNull($school->measure_requested_at);
     }
 
+    public function test_manual_test_is_rejected_during_speedtest_cooldown(): void
+    {
+        [$school, $user] = $this->makeSchoolWithUser(now());
+
+        $school->forceFill([
+            'agent_speedtest_cooldown_until' => now()->addMinutes(30),
+            'agent_speedtest_notice' => 'Speedtest dibatasi oleh Ookla (Limit reached).',
+        ])->save();
+
+        $this->actingAs($user)
+            ->post(route('qos.test', $school))
+            ->assertRedirect(route('dashboard', ['school_id' => $school->id]))
+            ->assertSessionHas('error');
+
+        $school->refresh();
+
+        $this->assertNull($school->measure_requested_at);
+    }
+
+    public function test_dashboard_shows_speedtest_cooldown_notice(): void
+    {
+        [$school, $user] = $this->makeSchoolWithUser(now());
+
+        $school->forceFill([
+            'agent_speedtest_cooldown_until' => now()->addMinutes(30),
+            'agent_speedtest_notice' => 'Speedtest dibatasi oleh Ookla (Limit reached).',
+        ])->save();
+
+        $this->actingAs($user)
+            ->get(route('dashboard', ['school_id' => $school->id]))
+            ->assertOk()
+            ->assertSee('Speedtest dibatasi oleh Ookla')
+            ->assertSee('Speedtest Cooldown');
+    }
+
     private function makeSchoolWithUser($lastSeenAt): array
     {
         $school = School::create([

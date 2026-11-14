@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\UserSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -127,6 +128,8 @@ class AgentController extends Controller
             'public_ip' => ['nullable', 'ip'],
             'agent_version' => ['nullable', 'string', 'max:50'],
             'error' => ['nullable', 'string', 'max:1000'],
+            'notice' => ['nullable', 'string', 'max:500'],
+            'speedtest_cooldown_until' => ['nullable', 'date'],
         ]);
 
         $publicIp = $validated['public_ip'] ?? $request->ip();
@@ -135,6 +138,8 @@ class AgentController extends Controller
             'gateway' => $validated['gateway'] ?? null,
             'public_ip' => $publicIp,
             'agent_version' => $validated['agent_version'] ?? null,
+            'notice' => $validated['notice'] ?? null,
+            'speedtest_cooldown_until' => $validated['speedtest_cooldown_until'] ?? null,
         ]);
 
         if (! empty($validated['error'])) {
@@ -188,6 +193,11 @@ class AgentController extends Controller
             $school->measure_requested_at = null;
         }
 
+        if ($validated['success']) {
+            $school->agent_speedtest_cooldown_until = null;
+            $school->agent_speedtest_notice = null;
+        }
+
         $this->updatePresence($school, [
             'gateway' => $validated['gateway'] ?? null,
             'public_ip' => $publicIp,
@@ -239,6 +249,16 @@ class AgentController extends Controller
             if ($detectedIsp) {
                 $school->agent_isp = $detectedIsp;
             }
+        }
+
+        if (array_key_exists('speedtest_cooldown_until', $data)) {
+            $school->agent_speedtest_cooldown_until = $data['speedtest_cooldown_until']
+                ? Carbon::parse($data['speedtest_cooldown_until'])
+                : null;
+        }
+
+        if (array_key_exists('notice', $data)) {
+            $school->agent_speedtest_notice = $data['notice'] ?: null;
         }
 
         $school->save();

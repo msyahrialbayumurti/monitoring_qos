@@ -12,7 +12,7 @@ try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 } catch {}
 
-$script:AgentVersion = '1.0.0'
+$script:AgentVersion = '1.1.0'
 $script:Config = $null
 
 $defaults = [ordered]@{
@@ -64,13 +64,87 @@ function Get-AgentState {
     return $null
 }
 
-function Save-AgentState([string]$Token) {
+function Save-AgentState {
+    param(
+        [Parameter(Mandatory = $true)][string]$Token,
+        $CooldownUntil = $null,
+        [int]$BackoffMinutes = 0,
+        [string]$Notice = ''
+    )
+
+    $enrolledAt = (Get-Date).ToString('o')
+    $existing = Get-AgentState
+
+    if ($existing -and -not [string]::IsNullOrWhiteSpace([string]$existing.EnrolledAt)) {
+        $enrolledAt = [string]$existing.EnrolledAt
+    }
+
     $state = [ordered]@{
         AgentToken = $Token
-        EnrolledAt = (Get-Date).ToString('o')
+        EnrolledAt = $enrolledAt
+        SpeedtestCooldownUntil = $CooldownUntil
+        SpeedtestBackoffMinutes = $BackoffMinutes
+        SpeedtestNotice = $Notice
     }
 
     $state | ConvertTo-Json | Set-Content -LiteralPath $script:Config.StatePath -Encoding UTF8
+}
+
+function Get-SpeedtestState {
+    $state = Get-AgentState
+
+    if (-not $state) {
+        return $null
+    }
+
+    $cooldownUntil = $null
+
+    if (-not [string]::IsNullOrWhiteSpace([string]$state.SpeedtestCooldownUntil)) {
+        try {
+            $cooldownUntil = [datetimeoffset]::Parse([string]$state.SpeedtestCooldownUntil)
+        } catch {}
+    }
+
+    $backoffMinutes = 0
+
+    try {
+        if ($null -ne $state.SpeedtestBackoffMinutes) {
+            $backoffMinutes = [int]$state.SpeedtestBackoffMinutes
+        }
+    } catch {}
+
+    return [pscustomobject]@{
+        CooldownUntil = $cooldownUntil
+        BackoffMinutes = $backoffMinutes
+        Notice = [string]$state.SpeedtestNotice
+    }
+}
+
+function Send-AgentHeartbeat {
+    param(
+        $Gateway,
+        $PublicIp,
+        $Notice = $null,
+        $CooldownUntil = $null
+    )
+
+    $cooldownIso = $null
+
+    if ($CooldownUntil) {
+        $cooldownIso = $CooldownUntil.ToString('o')
+    }
+
+    try {
+        Invoke-AgentApi -Method 'POST' -Path 'heartbeat' -Body ([ordered]@{
+            gateway = $Gateway
+            public_ip = $PublicIp
+            agent_version = $script:AgentVersion
+            notice = $Notice
+            speedtest_cooldown_until = $cooldownIso
+        }) | Out-Null
+    } catch {
+        Write-AgentLog ('Heartbeat gagal: {0}' -f $_.Exception.Message)
+    }
 }
 
 function Invoke-AgentEnrollment {
@@ -379,6 +453,7 @@ function Resolve-SpeedtestPath {
 function Measure-AgentSpeedtest {
     $result = [ordered]@{
         success = $false
+        rate_limited = $false
         throughput = $null
         delay = $null
         jitter = $null
@@ -402,6 +477,12 @@ function Measure-AgentSpeedtest {
     $lines = @(& $path @arguments 2>&1)
     $text = (($lines | ForEach-Object { [string]$_ }) -join "`n")
     $result.raw_output = $text
+
+    if ($text -match '(?i)Limit reached|Too many requests') {
+        $result.rate_limited = $true
+        return $result
+    }
+
     $data = $null
 
     foreach ($line in $lines) {
@@ -459,15 +540,24 @@ function Invoke-AgentCycle {
     $gateway = Get-DefaultGateway
     $publicIp = Get-PublicIp
     $serverConfig = Get-AgentServerConfig
+    $speedtestState = Get-SpeedtestState
+    $cooldownUntil = $null
+    $notice = $null
 
-    try {
-        Invoke-AgentApi -Method 'POST' -Path 'heartbeat' -Body ([ordered]@{
-            gateway = $gateway
-            public_ip = $publicIp
-            agent_version = $script:AgentVersion
-        }) | Out-Null
-    } catch {
-        Write-AgentLog ('Heartbeat gagal: {0}' -f $_.Exception.Message)
+    if (
+        $speedtestState -and
+        $speedtestState.CooldownUntil -and
+        $speedtestState.CooldownUntil -gt [datetimeoffset]::Now
+    ) {
+        $cooldownUntil = $speedtestState.CooldownUntil
+        $notice = 'Speedtest dibatasi oleh Ookla. Pengukuran throughput ditunda sementara.'
+    }
+
+    Send-AgentHeartbeat -Gateway $gateway -PublicIp $publicIp -Notice $notice -CooldownUntil $cooldownUntil
+
+    if ($cooldownUntil) {
+        Write-AgentLog ('Speedtest cooldown aktif sampai {0}. Pengukuran dilewati.' -f $cooldownUntil.ToString('dd/MM/yyyy HH:mm'))
+        return
     }
 
     $measureNow = $false
@@ -511,6 +601,7 @@ function Invoke-AgentCycle {
     if ($SkipSpeedtest -or [bool]$script:Config.SkipSpeedtest) {
         $speedtest = [ordered]@{
             success = $true
+            rate_limited = $false
             throughput = $null
             delay = $null
             jitter = $null
@@ -519,6 +610,33 @@ function Invoke-AgentCycle {
         }
     } else {
         $speedtest = Measure-AgentSpeedtest
+    }
+
+    if ($speedtest.rate_limited) {
+        $previousBackoff = 0
+
+        if ($speedtestState) {
+            $previousBackoff = [int]$speedtestState.BackoffMinutes
+        }
+
+        if ($previousBackoff -gt 0) {
+            $backoffMinutes = [Math]::Min($previousBackoff * 2, 360)
+        } else {
+            $backoffMinutes = 30
+        }
+
+        $cooldownUntil = [datetimeoffset]::Now.AddMinutes($backoffMinutes)
+        $notice = 'Speedtest dibatasi oleh Ookla (Limit reached). Pengukuran throughput ditunda sementara.'
+
+        Save-AgentState -Token $script:Config.AgentToken -CooldownUntil $cooldownUntil.ToString('o') -BackoffMinutes $backoffMinutes -Notice $notice
+        Send-AgentHeartbeat -Gateway $gateway -PublicIp $publicIp -Notice $notice -CooldownUntil $cooldownUntil
+        Write-AgentLog ('Limit speedtest terdeteksi. Cooldown {0} menit sampai {1}.' -f $backoffMinutes, $cooldownUntil.ToString('dd/MM/yyyy HH:mm'))
+        return
+    }
+
+    if ($speedtest.success -and $speedtestState) {
+        Save-AgentState -Token $script:Config.AgentToken -CooldownUntil $null -BackoffMinutes 0 -Notice ''
+        Send-AgentHeartbeat -Gateway $gateway -PublicIp $publicIp -Notice $null -CooldownUntil $null
     }
 
     $packetLoss = $ping.packet_loss

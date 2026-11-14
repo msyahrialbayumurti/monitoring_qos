@@ -123,6 +123,34 @@ class AgentEnrollmentTest extends TestCase
         }
     }
 
+    public function test_heartbeat_stores_speedtest_cooldown_notice(): void
+    {
+        $school = $this->makeSchool('TEMP Agent Cooldown Test');
+        $cooldownUntil = now()->addMinutes(30);
+
+        try {
+            $this->withHeader('X-Agent-Token', $school->agent_token)
+                ->postJson('/api/agent/heartbeat', [
+                    'gateway' => '192.168.1.1',
+                    'public_ip' => '192.168.1.1',
+                    'agent_version' => 'test-1.1',
+                    'notice' => 'Speedtest dibatasi oleh Ookla (Limit reached).',
+                    'speedtest_cooldown_until' => $cooldownUntil->toIso8601String(),
+                ])
+                ->assertOk();
+
+            $school->refresh();
+
+            $this->assertNotNull($school->agent_speedtest_cooldown_until);
+            $this->assertSame(
+                'Speedtest dibatasi oleh Ookla (Limit reached).',
+                $school->agent_speedtest_notice
+            );
+        } finally {
+            $school->delete();
+        }
+    }
+
     public function test_speedtest_binary_is_served_to_agents(): void
     {
         if (

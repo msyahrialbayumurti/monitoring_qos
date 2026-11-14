@@ -43,6 +43,19 @@ class QosTestController extends Controller
         }
 
         if (
+            $school->agent_speedtest_cooldown_until !== null &&
+            $school->agent_speedtest_cooldown_until->isFuture()
+        ) {
+            return $this->redirectWithStatus(
+                $school,
+                'error',
+                'Speedtest sedang dibatasi oleh Ookla sampai '
+                    . $school->agent_speedtest_cooldown_until->format('d/m/Y H:i')
+                    . '. Coba lagi setelah waktu tersebut.'
+            );
+        }
+
+        if (
             $school->measure_requested_at !== null &&
             $school->measure_requested_at->gt(now()->subMinutes(10))
         ) {
