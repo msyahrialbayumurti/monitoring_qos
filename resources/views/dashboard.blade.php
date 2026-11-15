@@ -1736,6 +1736,11 @@
                         Ping dan heartbeat tetap berjalan.
                     </small>
                 </div>
+            @elseif($selectedSchool->agent_speedtest_notice)
+                <div class="school-agent-note school-agent-note-warning">
+                    {{ $selectedSchool->agent_speedtest_notice }}
+                    <small>Auto speedtest dijeda sampai kamu menekan Tes QoS.</small>
+                </div>
             @endif
 
             <div class="school-agent-actions">

@@ -12,7 +12,7 @@ try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 } catch {}
 
-$script:AgentVersion = '1.1.1'
+$script:AgentVersion = '1.1.3'
 $script:Config = $null
 
 $defaults = [ordered]@{
@@ -98,6 +98,7 @@ function Save-AgentState {
         EnrolledAt = $enrolledAt
         SpeedtestCooldownUntil = $null
         SpeedtestBackoffMinutes = 0
+        SpeedtestPauseAuto = $false
         SpeedtestNotice = ''
         LastMeasurementAt = $null
     }
@@ -106,6 +107,7 @@ function Save-AgentState {
         foreach ($key in @(
             'SpeedtestCooldownUntil',
             'SpeedtestBackoffMinutes',
+            'SpeedtestPauseAuto',
             'SpeedtestNotice',
             'LastMeasurementAt'
         )) {
@@ -147,6 +149,16 @@ function Get-SpeedtestState {
         }
     } catch {}
 
+    $pauseAuto = $false
+
+    if ($null -ne $state.PSObject.Properties['SpeedtestPauseAuto']) {
+        try {
+            $pauseAuto = [bool]$state.SpeedtestPauseAuto
+        } catch {}
+    } elseif ($cooldownUntil) {
+        $pauseAuto = $true
+    }
+
     $lastMeasurementAt = $null
 
     if (-not [string]::IsNullOrWhiteSpace([string]$state.LastMeasurementAt)) {
@@ -158,6 +170,7 @@ function Get-SpeedtestState {
     return [pscustomobject]@{
         CooldownUntil = $cooldownUntil
         BackoffMinutes = $backoffMinutes
+        PauseAuto = $pauseAuto
         Notice = [string]$state.SpeedtestNotice
         LastMeasurementAt = $lastMeasurementAt
     }
@@ -600,6 +613,11 @@ function Invoke-AgentCycle {
     $speedtestState = Get-SpeedtestState
     $cooldownUntil = $null
     $notice = $null
+    $pauseAuto = $false
+
+    if ($speedtestState) {
+        $pauseAuto = [bool]$speedtestState.PauseAuto
+    }
 
     if (
         $speedtestState -and
@@ -608,6 +626,8 @@ function Invoke-AgentCycle {
     ) {
         $cooldownUntil = $speedtestState.CooldownUntil
         $notice = 'Speedtest dibatasi oleh Ookla. Pengukuran throughput ditunda sementara.'
+    } elseif ($pauseAuto) {
+        $notice = 'Auto speedtest dijeda setelah limit. Tekan Tes QoS untuk mencoba lagi.'
     }
 
     Send-AgentHeartbeat -Gateway $gateway -PublicIp $publicIp -Notice $notice -CooldownUntil $cooldownUntil
@@ -640,6 +660,11 @@ function Invoke-AgentCycle {
     if ($lastMeasurementAt) {
         $elapsed = ((Get-Date).ToUniversalTime() - $lastMeasurementAt.UtcDateTime).TotalSeconds
         $due = $elapsed -ge [int][Math]::Max(30, [int]$script:Config.IntervalSeconds)
+    }
+
+    if ($pauseAuto -and -not $measureNow) {
+        Write-AgentLog 'Auto speedtest dijeda setelah limit. Menunggu Tes QoS manual.'
+        return
     }
 
     if (-not $measureNow -and -not $due) {
@@ -684,19 +709,56 @@ function Invoke-AgentCycle {
             $previousBackoff = [int]$speedtestState.BackoffMinutes
         }
 
-        if ($previousBackoff -gt 0) {
-            $backoffMinutes = [Math]::Min($previousBackoff * 2, 360)
+        if ($previousBackoff -le 0) {
+            $backoffMinutes = 1
+        } elseif ($previousBackoff -lt 5) {
+            $backoffMinutes = 5
         } else {
-            $backoffMinutes = 30
+            $backoffMinutes = 10
         }
 
         $cooldownUntil = [datetimeoffset]::Now.AddMinutes($backoffMinutes)
         $notice = 'Speedtest dibatasi oleh Ookla (Limit reached). Pengukuran throughput ditunda sementara.'
+        $measuredAt = (Get-Date).ToString('o')
+
+        $rawOutput = [ordered]@{
+            agent_version = $script:AgentVersion
+            target = $target
+            gateway = $gateway
+            public_ip = $publicIp
+            rate_limited = $true
+            ping = $ping
+            speedtest = $speedtest
+        } | ConvertTo-Json -Depth 8
+
+        $payload = [ordered]@{
+            throughput = $null
+            delay = $ping.ping
+            jitter = $ping.jitter
+            packet_loss = $ping.packet_loss
+            ping = $ping.ping
+            success = $false
+            measured_at = $measuredAt
+            raw_output = $rawOutput
+            gateway = $gateway
+            public_ip = $publicIp
+            agent_version = $script:AgentVersion
+        }
+
+        try {
+            $response = Invoke-AgentApi -Method 'POST' -Path 'measurements' -Body $payload
+            Write-AgentLog ('Percobaan limit tercatat. ID: {0}.' -f $response.measurement_id)
+        } catch {
+            Write-AgentLog ('Percobaan limit gagal dikirim: {0}' -f $_.Exception.Message)
+            Add-AgentBuffer -Payload $payload
+        }
 
         Save-AgentState -Token $script:Config.AgentToken -Updates @{
             SpeedtestCooldownUntil = $cooldownUntil.ToString('o')
             SpeedtestBackoffMinutes = $backoffMinutes
+            SpeedtestPauseAuto = $true
             SpeedtestNotice = $notice
+            LastMeasurementAt = $measuredAt
         }
         Send-AgentHeartbeat -Gateway $gateway -PublicIp $publicIp -Notice $notice -CooldownUntil $cooldownUntil
         Write-AgentLog ('Limit speedtest terdeteksi. Cooldown {0} menit sampai {1}.' -f $backoffMinutes, $cooldownUntil.ToString('dd/MM/yyyy HH:mm'))
@@ -707,6 +769,7 @@ function Invoke-AgentCycle {
         Save-AgentState -Token $script:Config.AgentToken -Updates @{
             SpeedtestCooldownUntil = $null
             SpeedtestBackoffMinutes = 0
+            SpeedtestPauseAuto = $false
             SpeedtestNotice = ''
         }
         Send-AgentHeartbeat -Gateway $gateway -PublicIp $publicIp -Notice $null -CooldownUntil $null

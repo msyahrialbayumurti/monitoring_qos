@@ -267,6 +267,7 @@ class AgentController extends Controller
 
         if ($school->agent_speedtest_cooldown_until?->isFuture()) {
             $school->measure_requested_at = null;
+            $school->last_manual_test_at = null;
         }
 
         $school->save();

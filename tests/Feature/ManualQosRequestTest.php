@@ -173,6 +173,59 @@ class ManualQosRequestTest extends TestCase
         $this->assertNull($school->measure_requested_at);
     }
 
+    public function test_failed_measurement_is_stored_without_clearing_cooldown(): void
+    {
+        [$school] = $this->makeSchoolWithUser(now());
+
+        $school->forceFill([
+            'agent_speedtest_cooldown_until' => now()->addMinutes(10),
+            'agent_speedtest_notice' => 'Speedtest dibatasi oleh Ookla (Limit reached).',
+        ])->save();
+
+        $this->withHeader('X-Agent-Token', $school->agent_token)
+            ->postJson('/api/agent/measurements', [
+                'throughput' => null,
+                'delay' => 2,
+                'jitter' => 1.67,
+                'packet_loss' => 0,
+                'ping' => 2,
+                'success' => false,
+                'raw_output' => 'Limit reached',
+            ])
+            ->assertCreated();
+
+        $school->refresh();
+
+        $this->assertNotNull($school->agent_speedtest_cooldown_until);
+        $this->assertSame(
+            'Speedtest dibatasi oleh Ookla (Limit reached).',
+            $school->agent_speedtest_notice
+        );
+
+        $measurement = QosMeasurement::where('school_id', $school->id)
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($measurement);
+        $this->assertFalse($measurement->success);
+        $this->assertNull($measurement->throughput);
+    }
+
+    public function test_dashboard_shows_paused_auto_notice_after_cooldown(): void
+    {
+        [$school, $user] = $this->makeSchoolWithUser(now());
+
+        $school->forceFill([
+            'agent_speedtest_cooldown_until' => now()->subMinute(),
+            'agent_speedtest_notice' => 'Auto speedtest dijeda setelah limit. Tekan Tes QoS untuk mencoba lagi.',
+        ])->save();
+
+        $this->actingAs($user)
+            ->get(route('dashboard', ['school_id' => $school->id]))
+            ->assertOk()
+            ->assertSee('Auto speedtest dijeda setelah limit.');
+    }
+
     public function test_dashboard_shows_speedtest_cooldown_notice(): void
     {
         [$school, $user] = $this->makeSchoolWithUser(now());
