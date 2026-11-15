@@ -89,7 +89,10 @@ class AuthController extends Controller
 
         return redirect()
             ->route('dashboard')
-            ->with('success', 'Akun berhasil dibuat. Unduh agent di dashboard untuk mulai monitoring.');
+            ->with(
+                'success',
+                'Akun berhasil dibuat. Unduh agent di dashboard untuk mulai monitoring.'
+            );
     }
 
     public function logout(Request $request): RedirectResponse
