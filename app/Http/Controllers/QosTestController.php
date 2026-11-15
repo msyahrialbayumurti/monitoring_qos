@@ -66,8 +66,20 @@ class QosTestController extends Controller
             );
         }
 
+        if (
+            $school->last_manual_test_at !== null &&
+            $school->last_manual_test_at->gt(now()->subMinutes(5))
+        ) {
+            return $this->redirectWithStatus(
+                $school,
+                'error',
+                'Tes manual baru saja diminta. Tunggu 5 menit sebelum mencoba lagi agar tidak terkena limit Ookla.'
+            );
+        }
+
         $school->forceFill([
             'measure_requested_at' => now(),
+            'last_manual_test_at' => now(),
         ])->save();
 
         return $this->redirectWithStatus(

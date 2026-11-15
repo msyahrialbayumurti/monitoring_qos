@@ -25,6 +25,7 @@ class School extends Model
         'agent_isp',
         'agent_version',
         'measure_requested_at',
+        'last_manual_test_at',
         'agent_offline_notified_at',
         'agent_speedtest_cooldown_until',
         'agent_speedtest_notice',
@@ -36,6 +37,7 @@ class School extends Model
         'agent_last_seen_at' => 'datetime',
         'agent_enrollment_expires_at' => 'datetime',
         'measure_requested_at' => 'datetime',
+        'last_manual_test_at' => 'datetime',
         'agent_offline_notified_at' => 'datetime',
         'agent_speedtest_cooldown_until' => 'datetime',
     ];

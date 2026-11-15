@@ -60,6 +60,12 @@ class DashboardController extends Controller
                 'school_id',
                 $selectedSchool->id
             )
+                ->where('success', true)
+                ->whereNotNull('throughput')
+                ->whereNotNull('delay')
+                ->whereNotNull('jitter')
+                ->whereNotNull('packet_loss')
+                ->whereNotNull('ping')
                 ->latest('measured_at')
                 ->latest('id')
                 ->first();
@@ -228,6 +234,12 @@ if ($selectedSchool) {
                     'school_id',
                     $school->id
                 )
+                    ->where('success', true)
+                    ->whereNotNull('throughput')
+                    ->whereNotNull('delay')
+                    ->whereNotNull('jitter')
+                    ->whereNotNull('packet_loss')
+                    ->whereNotNull('ping')
                     ->latest('measured_at')
                     ->latest('id')
                     ->first();

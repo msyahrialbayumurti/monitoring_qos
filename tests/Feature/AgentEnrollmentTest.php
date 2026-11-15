@@ -128,6 +128,8 @@ class AgentEnrollmentTest extends TestCase
         $school = $this->makeSchool('TEMP Agent Cooldown Test');
         $cooldownUntil = now()->addMinutes(30);
 
+        $school->forceFill(['measure_requested_at' => now()])->save();
+
         try {
             $this->withHeader('X-Agent-Token', $school->agent_token)
                 ->postJson('/api/agent/heartbeat', [
@@ -146,6 +148,7 @@ class AgentEnrollmentTest extends TestCase
                 'Speedtest dibatasi oleh Ookla (Limit reached).',
                 $school->agent_speedtest_notice
             );
+            $this->assertNull($school->measure_requested_at);
         } finally {
             $school->delete();
         }

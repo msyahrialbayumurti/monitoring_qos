@@ -75,6 +75,57 @@ class ManualQosRequestTest extends TestCase
         );
     }
 
+    public function test_manual_test_is_rejected_when_requested_again_within_five_minutes(): void
+    {
+        [$school, $user] = $this->makeSchoolWithUser(now());
+
+        $school->forceFill([
+            'last_manual_test_at' => now()->subMinute(),
+        ])->save();
+
+        $this->actingAs($user)
+            ->post(route('qos.test', $school))
+            ->assertRedirect(route('dashboard', ['school_id' => $school->id]))
+            ->assertSessionHas('error');
+
+        $school->refresh();
+
+        $this->assertNull($school->measure_requested_at);
+    }
+
+    public function test_dashboard_uses_latest_valid_measurement_instead_of_failed_attempt(): void
+    {
+        [$school, $user] = $this->makeSchoolWithUser(now());
+
+        QosMeasurement::create([
+            'school_id' => $school->id,
+            'throughput' => 50,
+            'delay' => 10,
+            'jitter' => 2,
+            'packet_loss' => 0,
+            'ping' => 10,
+            'success' => true,
+            'measured_at' => now()->subMinutes(10),
+        ]);
+
+        QosMeasurement::create([
+            'school_id' => $school->id,
+            'throughput' => null,
+            'delay' => 2,
+            'jitter' => 1.67,
+            'packet_loss' => 0,
+            'ping' => 2,
+            'success' => false,
+            'measured_at' => now()->subMinute(),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('dashboard', ['school_id' => $school->id]))
+            ->assertOk()
+            ->assertSee('50.00')
+            ->assertDontSee('BELUM ADA');
+    }
+
     public function test_manual_test_is_rejected_when_agent_is_offline(): void
     {
         [$school, $user] = $this->makeSchoolWithUser(now()->subMinutes(20));

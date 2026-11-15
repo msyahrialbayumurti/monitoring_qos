@@ -1652,6 +1652,8 @@
         $speedtestCooldownUntil = $selectedSchool->agent_speedtest_cooldown_until;
         $speedtestCooldownActive = $speedtestCooldownUntil !== null
             && $speedtestCooldownUntil->isFuture();
+        $manualTestPending = $selectedSchool->measure_requested_at !== null
+            && $selectedSchool->measure_requested_at->gt(now()->subMinutes(10));
     @endphp
 
     <div class="school-info-panel">
@@ -1718,7 +1720,7 @@
                 </div>
             @endif
 
-            @if($selectedSchool->measure_requested_at)
+            @if($manualTestPending && !$speedtestCooldownActive)
                 <div class="school-agent-note">
                     Permintaan Tes QoS dikirim {{ $selectedSchool->measure_requested_at->diffForHumans() }}
                     <small>Menunggu agent melakukan pengukuran.</small>
@@ -1744,6 +1746,10 @@
                 @if($speedtestCooldownActive)
                     <button type="button" class="school-test-btn" disabled>
                         Speedtest Cooldown
+                    </button>
+                @elseif($manualTestPending)
+                    <button type="button" class="school-test-btn" disabled>
+                        Tes Sedang Diproses
                     </button>
                 @elseif($selectedSchool->ip_target && $selectedSchool->agent_last_seen_at)
                     <form
