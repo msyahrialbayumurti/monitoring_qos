@@ -169,6 +169,7 @@ class AgentController extends Controller
             'packet_loss' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'ping' => ['nullable', 'numeric', 'min:0', 'max:600000'],
             'success' => ['required', 'boolean'],
+            'measured_at' => ['nullable', 'date'],
             'raw_output' => ['nullable', 'string', 'max:30000'],
             'gateway' => ['nullable', 'ip'],
             'public_ip' => ['nullable', 'ip'],
@@ -176,6 +177,9 @@ class AgentController extends Controller
         ]);
 
         $publicIp = $validated['public_ip'] ?? $request->ip();
+        $measuredAt = ! empty($validated['measured_at'])
+            ? Carbon::parse($validated['measured_at'])->setTimezone(config('app.timezone'))
+            : now();
 
         $measurement = QosMeasurement::create([
             'school_id' => $school->id,
@@ -186,7 +190,7 @@ class AgentController extends Controller
             'ping' => $validated['ping'] ?? null,
             'success' => $validated['success'],
             'raw_output' => $validated['raw_output'] ?? null,
-            'measured_at' => now(),
+            'measured_at' => $measuredAt,
         ]);
 
         if ($school->measure_requested_at !== null) {

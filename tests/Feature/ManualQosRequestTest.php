@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\QosMeasurement;
 use App\Models\School;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -44,6 +45,34 @@ class ManualQosRequestTest extends TestCase
         $school->refresh();
 
         $this->assertNull($school->measure_requested_at);
+    }
+
+    public function test_agent_measurement_uses_measured_at_from_payload(): void
+    {
+        [$school] = $this->makeSchoolWithUser(now());
+        $measuredAt = now()->subMinutes(12)->startOfSecond();
+
+        $this->withHeader('X-Agent-Token', $school->agent_token)
+            ->postJson('/api/agent/measurements', [
+                'throughput' => 50,
+                'delay' => 10,
+                'jitter' => 2,
+                'packet_loss' => 0,
+                'ping' => 10,
+                'success' => true,
+                'measured_at' => $measuredAt->toIso8601String(),
+            ])
+            ->assertCreated();
+
+        $measurement = QosMeasurement::where('school_id', $school->id)
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($measurement);
+        $this->assertSame(
+            $measuredAt->format('Y-m-d H:i:s'),
+            $measurement->measured_at->format('Y-m-d H:i:s')
+        );
     }
 
     public function test_manual_test_is_rejected_when_agent_is_offline(): void

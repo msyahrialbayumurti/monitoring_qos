@@ -12,7 +12,7 @@ try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 } catch {}
 
-$script:AgentVersion = '1.1.0'
+$script:AgentVersion = '1.1.1'
 $script:Config = $null
 
 $defaults = [ordered]@{
@@ -44,6 +44,22 @@ function Resolve-AgentPath([string]$Path) {
     return (Join-Path $PSScriptRoot $Path)
 }
 
+function Invoke-NativeCommandLines {
+    param(
+        [Parameter(Mandatory = $true)][string]$FilePath,
+        [string[]]$Arguments = @()
+    )
+
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+
+    try {
+        return @(& $FilePath @Arguments 2>&1 | ForEach-Object { [string]$_ })
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+}
+
 function Get-AgentState {
     try {
         $statePath = [string]$script:Config.StatePath
@@ -67,13 +83,11 @@ function Get-AgentState {
 function Save-AgentState {
     param(
         [Parameter(Mandatory = $true)][string]$Token,
-        $CooldownUntil = $null,
-        [int]$BackoffMinutes = 0,
-        [string]$Notice = ''
+        [hashtable]$Updates = @{}
     )
 
-    $enrolledAt = (Get-Date).ToString('o')
     $existing = Get-AgentState
+    $enrolledAt = (Get-Date).ToString('o')
 
     if ($existing -and -not [string]::IsNullOrWhiteSpace([string]$existing.EnrolledAt)) {
         $enrolledAt = [string]$existing.EnrolledAt
@@ -82,9 +96,29 @@ function Save-AgentState {
     $state = [ordered]@{
         AgentToken = $Token
         EnrolledAt = $enrolledAt
-        SpeedtestCooldownUntil = $CooldownUntil
-        SpeedtestBackoffMinutes = $BackoffMinutes
-        SpeedtestNotice = $Notice
+        SpeedtestCooldownUntil = $null
+        SpeedtestBackoffMinutes = 0
+        SpeedtestNotice = ''
+        LastMeasurementAt = $null
+    }
+
+    if ($existing) {
+        foreach ($key in @(
+            'SpeedtestCooldownUntil',
+            'SpeedtestBackoffMinutes',
+            'SpeedtestNotice',
+            'LastMeasurementAt'
+        )) {
+            if ($null -ne $existing.PSObject.Properties[$key]) {
+                $state[$key] = $existing.$key
+            }
+        }
+    }
+
+    foreach ($key in $Updates.Keys) {
+        if ($state.Contains($key)) {
+            $state[$key] = $Updates[$key]
+        }
     }
 
     $state | ConvertTo-Json | Set-Content -LiteralPath $script:Config.StatePath -Encoding UTF8
@@ -113,10 +147,19 @@ function Get-SpeedtestState {
         }
     } catch {}
 
+    $lastMeasurementAt = $null
+
+    if (-not [string]::IsNullOrWhiteSpace([string]$state.LastMeasurementAt)) {
+        try {
+            $lastMeasurementAt = [datetimeoffset]::Parse([string]$state.LastMeasurementAt)
+        } catch {}
+    }
+
     return [pscustomobject]@{
         CooldownUntil = $cooldownUntil
         BackoffMinutes = $backoffMinutes
         Notice = [string]$state.SpeedtestNotice
+        LastMeasurementAt = $lastMeasurementAt
     }
 }
 
@@ -360,7 +403,15 @@ function Measure-AgentPing {
         return $result
     }
 
-    $lines = @(& ping.exe -n $Count -w 2000 $Target 2>&1)
+    try {
+        $lines = @(Invoke-NativeCommandLines -FilePath 'ping.exe' -Arguments @(
+            '-n', [string]$Count, '-w', '2000', $Target
+        ))
+    } catch {
+        $result.raw_output = $_.Exception.Message
+        return $result
+    }
+
     $text = (($lines | ForEach-Object { [string]$_ }) -join "`n")
     $result.raw_output = $text
 
@@ -474,7 +525,13 @@ function Measure-AgentSpeedtest {
         $arguments = @('--server-id=' + [string]$script:Config.SpeedtestServerId) + $arguments
     }
 
-    $lines = @(& $path @arguments 2>&1)
+    try {
+        $lines = @(Invoke-NativeCommandLines -FilePath $path -Arguments $arguments)
+    } catch {
+        $result.raw_output = $_.Exception.Message
+        return $result
+    }
+
     $text = (($lines | ForEach-Object { [string]$_ }) -join "`n")
     $result.raw_output = $text
 
@@ -562,19 +619,27 @@ function Invoke-AgentCycle {
 
     $measureNow = $false
     $due = $true
+    $lastMeasurementAt = $null
 
     if ($serverConfig) {
         $measureNow = [bool]$serverConfig.measure_now
 
         if (-not [string]::IsNullOrWhiteSpace([string]$serverConfig.last_measurement_at)) {
             try {
-                $lastMeasurement = [datetimeoffset]::Parse([string]$serverConfig.last_measurement_at)
-                $elapsed = ((Get-Date).ToUniversalTime() - $lastMeasurement.UtcDateTime).TotalSeconds
-                $due = $elapsed -ge [int][Math]::Max(30, [int]$script:Config.IntervalSeconds)
-            } catch {
-                $due = $true
-            }
+                $lastMeasurementAt = [datetimeoffset]::Parse([string]$serverConfig.last_measurement_at)
+            } catch {}
         }
+    }
+
+    if ($speedtestState -and $speedtestState.LastMeasurementAt) {
+        if (-not $lastMeasurementAt -or $speedtestState.LastMeasurementAt -gt $lastMeasurementAt) {
+            $lastMeasurementAt = $speedtestState.LastMeasurementAt
+        }
+    }
+
+    if ($lastMeasurementAt) {
+        $elapsed = ((Get-Date).ToUniversalTime() - $lastMeasurementAt.UtcDateTime).TotalSeconds
+        $due = $elapsed -ge [int][Math]::Max(30, [int]$script:Config.IntervalSeconds)
     }
 
     if (-not $measureNow -and -not $due) {
@@ -628,14 +693,22 @@ function Invoke-AgentCycle {
         $cooldownUntil = [datetimeoffset]::Now.AddMinutes($backoffMinutes)
         $notice = 'Speedtest dibatasi oleh Ookla (Limit reached). Pengukuran throughput ditunda sementara.'
 
-        Save-AgentState -Token $script:Config.AgentToken -CooldownUntil $cooldownUntil.ToString('o') -BackoffMinutes $backoffMinutes -Notice $notice
+        Save-AgentState -Token $script:Config.AgentToken -Updates @{
+            SpeedtestCooldownUntil = $cooldownUntil.ToString('o')
+            SpeedtestBackoffMinutes = $backoffMinutes
+            SpeedtestNotice = $notice
+        }
         Send-AgentHeartbeat -Gateway $gateway -PublicIp $publicIp -Notice $notice -CooldownUntil $cooldownUntil
         Write-AgentLog ('Limit speedtest terdeteksi. Cooldown {0} menit sampai {1}.' -f $backoffMinutes, $cooldownUntil.ToString('dd/MM/yyyy HH:mm'))
         return
     }
 
     if ($speedtest.success -and $speedtestState) {
-        Save-AgentState -Token $script:Config.AgentToken -CooldownUntil $null -BackoffMinutes 0 -Notice ''
+        Save-AgentState -Token $script:Config.AgentToken -Updates @{
+            SpeedtestCooldownUntil = $null
+            SpeedtestBackoffMinutes = 0
+            SpeedtestNotice = ''
+        }
         Send-AgentHeartbeat -Gateway $gateway -PublicIp $publicIp -Notice $null -CooldownUntil $null
     }
 
@@ -658,6 +731,7 @@ function Invoke-AgentCycle {
     }
 
     $success = [bool]($ping.success -and $speedtest.success)
+    $measuredAt = (Get-Date).ToString('o')
 
     $rawOutput = [ordered]@{
         agent_version = $script:AgentVersion
@@ -675,6 +749,7 @@ function Invoke-AgentCycle {
         packet_loss = $packetLoss
         ping = $ping.ping
         success = $success
+        measured_at = $measuredAt
         raw_output = $rawOutput
         gateway = $gateway
         public_ip = $publicIp
@@ -687,6 +762,10 @@ function Invoke-AgentCycle {
     } catch {
         Write-AgentLog ('Pengukuran gagal dikirim: {0}' -f $_.Exception.Message)
         Add-AgentBuffer -Payload $payload
+    }
+
+    Save-AgentState -Token $script:Config.AgentToken -Updates @{
+        LastMeasurementAt = $measuredAt
     }
 }
 
