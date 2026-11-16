@@ -564,7 +564,7 @@
                 <div class="settings-card-icon" aria-hidden="true">WA</div>
                 <div>
                     <h2>Notifikasi WhatsApp</h2>
-                    <p>Kirim peringatan otomatis ke WhatsApp saat kondisi QoS berubah atau pengukuran gagal.</p>
+                    <p>Kirim hasil pengukuran QoS ke WhatsApp setiap kali agent selesai mengukur, termasuk kondisi BAIK.</p>
                 </div>
             </div>
 
@@ -603,7 +603,7 @@
                             >
                             <span>
                                 <strong>Aktifkan notifikasi WhatsApp</strong>
-                                Notif dikirim saat kondisi berubah (mis. BAIK ke BURUK), kembali membaik, atau pengukuran gagal.
+                                Notif dikirim untuk setiap pengukuran, termasuk BAIK, SEDANG, BURUK, dan pengukuran gagal.
                             </span>
                         </label>
                     </div>

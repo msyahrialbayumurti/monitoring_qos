@@ -12,7 +12,7 @@ try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 } catch {}
 
-$script:AgentVersion = '1.1.3'
+$script:AgentVersion = '1.1.4'
 $script:Config = $null
 
 $defaults = [ordered]@{
@@ -793,7 +793,26 @@ function Invoke-AgentCycle {
         $jitterValue = $ping.jitter
     }
 
-    $success = [bool]($ping.success -and $speedtest.success)
+    $pingValue = $ping.ping
+
+    if ($null -eq $pingValue) {
+        $pingValue = $delay
+    }
+
+    $pingSource = 'unavailable'
+
+    if ($ping.success -and $null -ne $ping.ping) {
+        $pingSource = 'icmp'
+    } elseif ($null -ne $pingValue) {
+        $pingSource = 'speedtest_delay'
+    }
+
+    if ($SkipSpeedtest -or [bool]$script:Config.SkipSpeedtest) {
+        $success = [bool]$ping.success
+    } else {
+        $success = [bool]$speedtest.success
+    }
+
     $measuredAt = (Get-Date).ToString('o')
 
     $rawOutput = [ordered]@{
@@ -801,6 +820,7 @@ function Invoke-AgentCycle {
         target = $target
         gateway = $gateway
         public_ip = $publicIp
+        ping_source = $pingSource
         ping = $ping
         speedtest = $speedtest
     } | ConvertTo-Json -Depth 8
@@ -810,7 +830,7 @@ function Invoke-AgentCycle {
         delay = $delay
         jitter = $jitterValue
         packet_loss = $packetLoss
-        ping = $ping.ping
+        ping = $pingValue
         success = $success
         measured_at = $measuredAt
         raw_output = $rawOutput

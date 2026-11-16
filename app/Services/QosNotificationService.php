@@ -12,6 +12,8 @@ use Throwable;
 
 class QosNotificationService
 {
+    public const EVENT_MEASUREMENT = 'measurement';
+
     public const EVENT_CONDITION_CHANGE = 'condition_change';
 
     public const EVENT_RECOVERY = 'recovery';
@@ -29,7 +31,7 @@ class QosNotificationService
     }
 
     /**
-     * Kirim notifikasi WhatsApp saat kondisi QoS berubah atau pengukuran gagal.
+     * Kirim notifikasi WhatsApp untuk setiap pengukuran QoS.
      */
     public function handle(QosMeasurement $measurement): void
     {
@@ -222,10 +224,6 @@ class QosNotificationService
         ?string $previousCondition
     ): ?string {
         if (! $measurement->success) {
-            if ($previous && ! $previous->success) {
-                return null;
-            }
-
             return self::EVENT_FAILURE;
         }
 
@@ -238,16 +236,16 @@ class QosNotificationService
                 return self::EVENT_RECOVERY;
             }
 
-            return null;
+            return self::EVENT_MEASUREMENT;
         }
 
         if (in_array($currentCondition, ['SEDANG', 'BURUK'], true)) {
             return $previousCondition === $currentCondition
-                ? null
+                ? self::EVENT_MEASUREMENT
                 : self::EVENT_CONDITION_CHANGE;
         }
 
-        return null;
+        return self::EVENT_MEASUREMENT;
     }
 
     private function buildMessage(
@@ -273,6 +271,18 @@ class QosNotificationService
 
         $condition = $classification['condition'] ?? '-';
         $index = $classification['qos_index'];
+
+        if ($event === self::EVENT_MEASUREMENT) {
+            return implode("\n", [
+                '[NETMONITOR] ' . $schoolName,
+                'Hasil pengukuran QoS: ' . $condition
+                    . ($index !== null ? ' (indeks ' . number_format((float) $index, 2) . ')' : '')
+                    . '.',
+                $this->parameterLines($measurement),
+                'Waktu: ' . $time,
+                $dashboardUrl,
+            ]);
+        }
 
         if ($event === self::EVENT_RECOVERY) {
             return implode("\n", [

@@ -31,7 +31,7 @@ class WhatsAppNotificationTest extends TestCase
         ]);
     }
 
-    public function test_notification_is_sent_when_condition_changes_to_bad(): void
+    public function test_notification_is_sent_for_baik_and_changed_conditions(): void
     {
         [$school] = $this->makeSchoolWithUser('08123456789', true);
 
@@ -43,7 +43,14 @@ class WhatsAppNotificationTest extends TestCase
             'ping' => 10,
         ]);
 
-        Http::assertNothingSent();
+        Http::assertSentCount(1);
+
+        Http::assertSent(function ($request) use ($school) {
+            return $request->url() === 'https://api.fonnte.com/send'
+                && $request['target'] === '628123456789'
+                && str_contains($request['message'], $school->nama_sekolah)
+                && str_contains($request['message'], 'BAIK');
+        });
 
         $this->makeMeasurement($school, [
             'throughput' => 10,
@@ -53,7 +60,7 @@ class WhatsAppNotificationTest extends TestCase
             'ping' => 500,
         ]);
 
-        Http::assertSentCount(1);
+        Http::assertSentCount(2);
 
         Http::assertSent(function ($request) use ($school) {
             return $request->url() === 'https://api.fonnte.com/send'
@@ -76,7 +83,7 @@ class WhatsAppNotificationTest extends TestCase
             'ping' => 510,
         ]);
 
-        Http::assertSentCount(1);
+        Http::assertSentCount(3);
     }
 
     public function test_notification_is_not_sent_when_disabled_or_number_missing(): void
@@ -102,10 +109,15 @@ class WhatsAppNotificationTest extends TestCase
         ]);
 
         Http::assertNothingSent();
-        $this->assertDatabaseCount('whatsapp_notifications', 0);
+        $this->assertDatabaseMissing('whatsapp_notifications', [
+            'school_id' => $school->id,
+        ]);
+        $this->assertDatabaseMissing('whatsapp_notifications', [
+            'school_id' => $disabledSchool->id,
+        ]);
     }
 
-    public function test_notification_is_sent_only_when_measurement_starts_failing(): void
+    public function test_notification_is_sent_for_every_failed_measurement(): void
     {
         [$school] = $this->makeSchoolWithUser('08123456789', true);
 
@@ -119,7 +131,7 @@ class WhatsAppNotificationTest extends TestCase
 
         $this->makeMeasurement($school, [], false);
 
-        Http::assertSentCount(1);
+        Http::assertSentCount(2);
 
         $this->assertDatabaseHas('whatsapp_notifications', [
             'school_id' => $school->id,
@@ -129,7 +141,38 @@ class WhatsAppNotificationTest extends TestCase
 
         $this->makeMeasurement($school, [], false);
 
-        Http::assertSentCount(1);
+        Http::assertSentCount(3);
+    }
+
+    public function test_notification_is_sent_for_repeated_sedang_measurements(): void
+    {
+        [$school] = $this->makeSchoolWithUser('08123456789', true);
+
+        $values = [
+            'throughput' => 45,
+            'delay' => 35,
+            'jitter' => 5,
+            'packet_loss' => 0,
+            'ping' => 7,
+        ];
+
+        $this->makeMeasurement($school, $values);
+        $this->makeMeasurement($school, $values);
+
+        Http::assertSentCount(2);
+
+        Http::assertSent(function ($request) use ($school) {
+            return $request->url() === 'https://api.fonnte.com/send'
+                && $request['target'] === '628123456789'
+                && str_contains($request['message'], $school->nama_sekolah)
+                && str_contains($request['message'], 'SEDANG');
+        });
+
+        $this->assertDatabaseHas('whatsapp_notifications', [
+            'school_id' => $school->id,
+            'event' => 'measurement',
+            'status' => 'sent',
+        ]);
     }
 
     public function test_settings_can_store_number_and_send_test_message(): void

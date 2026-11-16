@@ -59,13 +59,20 @@ class AgentController extends Controller
 
         $requestIp = $request->ip();
 
-        $this->updatePresence($school, [
-            'gateway' => null,
-            'public_ip' => $requestIp && filter_var($requestIp, FILTER_VALIDATE_IP)
-                ? $requestIp
-                : null,
-            'agent_version' => $validated['agent_version'] ?? null,
-        ]);
+        try {
+            $this->updatePresence($school, [
+                'gateway' => null,
+                'public_ip' => $requestIp && filter_var($requestIp, FILTER_VALIDATE_IP)
+                    ? $requestIp
+                    : null,
+                'agent_version' => $validated['agent_version'] ?? null,
+            ]);
+        } catch (Throwable $e) {
+            Log::warning('Gagal memperbarui presence agent saat enrollment.', [
+                'school_id' => $school->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return response()->json([
             'message' => 'Enrollment berhasil.',
