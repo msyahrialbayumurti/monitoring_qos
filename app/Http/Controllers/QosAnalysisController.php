@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\QosMeasurement;
 use App\Models\School;
 use App\Services\QosClassificationService;
+use App\Services\QosRcaContextService;
 use App\Services\QosRcaService;
 use App\Services\QosDssService;
 use Illuminate\Http\Request;
@@ -14,6 +15,7 @@ class QosAnalysisController extends Controller
     public function index(
         Request $request,
         QosClassificationService $classification,
+        QosRcaContextService $rcaContextService,
         QosRcaService $rcaService,
         QosDssService $dssService
     ) {
@@ -56,6 +58,7 @@ class QosAnalysisController extends Controller
         $measurements->getCollection()->transform(
             function ($measurement) use (
                 $classification,
+                $rcaContextService,
                 $rcaService,
                 $dssService
             ) {
@@ -98,193 +101,17 @@ class QosAnalysisController extends Controller
                 |--------------------------------------------------------------------------
                 */
 
-                $measurement->ping_status = 'DATA';
+                $rcaContext =
+                    $rcaContextService->build($measurement);
 
-                $targetPacketLoss = null;
+                $measurement->ping_status =
+                    $rcaContext['ping_status'];
 
-                $pingTimeout = false;
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Baca raw output
-                |--------------------------------------------------------------------------
-                */
-
-                if ($measurement->raw_output) {
-
-                    $rawOutput = $measurement->raw_output;
-
-                    if (is_string($rawOutput)) {
-                        $rawOutput = json_decode(
-                            $rawOutput,
-                            true
-                        );
-                    }
-
-
-                    if (is_array($rawOutput)) {
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | Target Ping
-                        |--------------------------------------------------------------------------
-                        */
-
-                        if (
-                            isset($rawOutput['target_ping']) &&
-                            is_array($rawOutput['target_ping'])
-                        ) {
-
-                            $targetPing =
-                                $rawOutput['target_ping'];
-
-
-                            /*
-                            |--------------------------------------------------------------------------
-                            | Jika packet loss target tersedia
-                            |--------------------------------------------------------------------------
-                            */
-
-                            if (
-                                isset($targetPing['packet_loss']) &&
-                                is_numeric($targetPing['packet_loss'])
-                            ) {
-
-                                $targetPacketLoss =
-                                    (float) $targetPing['packet_loss'];
-                            }
-
-
-                            /*
-                            |--------------------------------------------------------------------------
-                            | Status Ping
-                            |--------------------------------------------------------------------------
-                            */
-
-                            if (
-                                isset($targetPing['success']) &&
-                                $targetPing['success'] === false
-                            ) {
-
-                                $measurement->ping_status =
-                                    'TIMEOUT';
-
-                                $pingTimeout = true;
-
-                            } elseif (
-                                isset($targetPing['success']) &&
-                                $targetPing['success'] === true
-                            ) {
-
-                                if (
-                                    isset($targetPing['ping']) &&
-                                    $targetPing['ping'] !== null
-                                ) {
-
-                                    $measurement->ping_status =
-                                        'TERHUBUNG';
-
-                                } else {
-
-                                    $measurement->ping_status =
-                                        'DATA';
-                                }
-                            }
-                        }
-                    }
-                }
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Jika ping timeout tetapi packet loss target
-                | tidak tersimpan di raw_output, maka dianggap 100%.
-                |--------------------------------------------------------------------------
-                */
-
-                if (
-                    $pingTimeout &&
-                    $targetPacketLoss === null
-                ) {
-                    $targetPacketLoss = 100.0;
-                }
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Cek pengukuran sebelumnya
-                |--------------------------------------------------------------------------
-                */
-
-                $previousMeasurement =
-                    QosMeasurement::where(
-                        'school_id',
-                        $measurement->school_id
-                    )
-                    ->where(
-                        'measured_at',
-                        '<',
-                        $measurement->measured_at
-                    )
-                    ->latest('measured_at')
-                    ->first();
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Status timeout sebelumnya
-                |--------------------------------------------------------------------------
-                */
-
-                $previousPingTimeout = false;
-
-
-                if (
-                    $previousMeasurement &&
-                    $previousMeasurement->raw_output
-                ) {
-
-                    $previousRawOutput =
-                        $previousMeasurement->raw_output;
-
-
-                    if (is_string($previousRawOutput)) {
-
-                        $previousRawOutput =
-                            json_decode(
-                                $previousRawOutput,
-                                true
-                            );
-                    }
-
-
-                    if (
-                        is_array($previousRawOutput) &&
-                        isset($previousRawOutput['target_ping']) &&
-                        is_array($previousRawOutput['target_ping'])
-                    ) {
-
-                        $previousTargetPing =
-                            $previousRawOutput['target_ping'];
-
-
-                        $previousPingTimeout =
-                            isset($previousTargetPing['success']) &&
-                            $previousTargetPing['success'] === false;
-                    }
-                }
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Timeout berulang
-                |--------------------------------------------------------------------------
-                */
+                $targetPacketLoss =
+                    $rcaContext['target_packet_loss'];
 
                 $pingTimeoutRepeated =
-                    $pingTimeout &&
-                    $previousPingTimeout;
+                    $rcaContext['ping_timeout_repeated'];
 
 
                 /*
@@ -316,7 +143,8 @@ class QosAnalysisController extends Controller
                         $rcaService->analyze(
                             $measurement->qos_classification,
                             $targetPacketLoss,
-                            $pingTimeoutRepeated
+                            $pingTimeoutRepeated,
+                            $rcaContext['speedtest_succeeded']
                         );
 
 

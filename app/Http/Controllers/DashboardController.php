@@ -6,6 +6,7 @@ use App\Models\School;
 use App\Models\QosMeasurement;
 use App\Models\UserSetting;
 use App\Services\QosClassificationService;
+use App\Services\QosRcaContextService;
 use App\Services\QosRcaService;
 use App\Services\QosDssService;
 use Illuminate\Http\Request;
@@ -15,6 +16,7 @@ class DashboardController extends Controller
     public function index(
         Request $request,
         QosClassificationService $classification,
+        QosRcaContextService $rcaContextService,
         QosRcaService $rcaService,
         QosDssService $dssService
     ) {
@@ -124,14 +126,15 @@ class DashboardController extends Controller
                 | diambil dari pengukuran saat ini dan pengukuran sebelumnya.
                 |
                 */
-                $rcaContext = $this->buildRcaContext(
+                $rcaContext = $rcaContextService->build(
                     $latestMeasurement
                 );
 
                 $latestRca = $rcaService->analyze(
                     $latestClassification,
                     $rcaContext['target_packet_loss'],
-                    $rcaContext['ping_timeout_repeated']
+                    $rcaContext['ping_timeout_repeated'],
+                    $rcaContext['speedtest_succeeded']
                 );
 
                 /*
@@ -222,6 +225,7 @@ if ($selectedSchool) {
         $schoolStatuses = $schools->map(
             function ($school) use (
                 $classification,
+                $rcaContextService,
                 $rcaService,
                 $dssService
             ) {
@@ -299,14 +303,15 @@ if ($selectedSchool) {
                         | diambil dari pengukuran saat ini dan pengukuran sebelumnya.
                         |
                         */
-                        $rcaContext = $this->buildRcaContext(
+                        $rcaContext = $rcaContextService->build(
                             $measurement
                         );
 
                         $rca = $rcaService->analyze(
                             $qosClassification,
                             $rcaContext['target_packet_loss'],
-                            $rcaContext['ping_timeout_repeated']
+                            $rcaContext['ping_timeout_repeated'],
+                            $rcaContext['speedtest_succeeded']
                         );
 
                         /*
@@ -403,97 +408,4 @@ if ($selectedSchool) {
         ]);
     }
 
-    /**
-     * Menyiapkan konteks RCA dari hasil pengukuran:
-     * packet loss target dan status ping timeout berulang.
-     *
-     * @return array{target_packet_loss: ?float, ping_timeout_repeated: bool}
-     */
-    private function buildRcaContext(QosMeasurement $measurement): array
-    {
-        $targetPacketLoss = null;
-
-        $pingTimeout = false;
-
-        if ($measurement->raw_output) {
-            $rawOutput = json_decode(
-                $measurement->raw_output,
-                true
-            );
-
-            if (
-                is_array($rawOutput) &&
-                isset($rawOutput['target_ping']) &&
-                is_array($rawOutput['target_ping'])
-            ) {
-                $targetPing = $rawOutput['target_ping'];
-
-                if (
-                    isset($targetPing['packet_loss']) &&
-                    is_numeric($targetPing['packet_loss'])
-                ) {
-                    $targetPacketLoss = (float) $targetPing['packet_loss'];
-                }
-
-                if (
-                    isset($targetPing['success']) &&
-                    $targetPing['success'] === false
-                ) {
-                    $pingTimeout = true;
-                }
-            }
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Ping timeout tanpa data packet loss target dianggap 100%.
-        |--------------------------------------------------------------------------
-        */
-
-        if ($pingTimeout && $targetPacketLoss === null) {
-            $targetPacketLoss = 100.0;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Deteksi timeout berulang dari pengukuran sebelumnya.
-        |--------------------------------------------------------------------------
-        */
-
-        $previousPingTimeout = false;
-
-        $previousMeasurement = QosMeasurement::where(
-            'school_id',
-            $measurement->school_id
-        )
-            ->where(
-                'measured_at',
-                '<',
-                $measurement->measured_at
-            )
-            ->latest('measured_at')
-            ->first();
-
-        if ($previousMeasurement && $previousMeasurement->raw_output) {
-            $previousRawOutput = json_decode(
-                $previousMeasurement->raw_output,
-                true
-            );
-
-            if (
-                is_array($previousRawOutput) &&
-                isset($previousRawOutput['target_ping']) &&
-                is_array($previousRawOutput['target_ping'])
-            ) {
-                $previousPingTimeout =
-                    isset($previousRawOutput['target_ping']['success']) &&
-                    $previousRawOutput['target_ping']['success'] === false;
-            }
-        }
-
-        return [
-            'target_packet_loss' => $targetPacketLoss,
-            'ping_timeout_repeated' => $pingTimeout && $previousPingTimeout,
-        ];
-    }
 }

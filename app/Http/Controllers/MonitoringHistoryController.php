@@ -111,11 +111,11 @@ class MonitoringHistoryController extends Controller
 
                     if (
                         is_array($rawOutput) &&
-                        isset($rawOutput['target_ping'])
+                        (isset($rawOutput['target_ping']) || isset($rawOutput['ping']))
                     ) {
 
                         $targetPing =
-                            $rawOutput['target_ping'];
+                            $rawOutput['target_ping'] ?? $rawOutput['ping'];
 
                         /*
                         |--------------------------------------------------------------------------

@@ -776,6 +776,60 @@
 
 
 
+.analysis-page .rule-badge {
+
+
+
+        display: inline-block;
+
+        margin-left: 6px;
+
+        padding: 2px 6px;
+
+        border-radius: 4px;
+
+        background: #e8f0fb;
+
+        color: #315b8c;
+
+        font-size: 8px;
+
+        font-weight: bold;
+
+        vertical-align: middle;
+
+    }
+
+
+
+
+
+
+
+
+.analysis-page .item-condition {
+
+
+
+        margin: 4px 0 6px;
+
+        font-family: Consolas, monospace;
+
+        font-size: 9px;
+
+        line-height: 1.5;
+
+        color: #7b8ca6;
+
+    }
+
+
+
+
+
+
+
+
 .analysis-page .item-text {
 
 
@@ -2865,6 +2919,12 @@
 
                                     {{ $cause['parameter'] ?? 'QoS' }}
 
+                                    @if (!empty($cause['rule_label']))
+
+                                        <span class="rule-badge">{{ $cause['rule_label'] }}</span>
+
+                                    @endif
+
 
 
                                 </div>
@@ -2874,8 +2934,18 @@
 
 
 
+                                @if (!empty($cause['condition']))
+
+                                    <div class="item-condition">
+
+                                        IF: {{ $cause['condition'] }}
+
+                                    </div>
+
+                                @endif
 
                                 <div class="item-text">
+
 
 
 
@@ -3153,6 +3223,12 @@
 
                                     {{ $recommendation['parameter'] ?? 'QoS' }}
 
+                                    @if (!empty($recommendation['rule_label']))
+
+                                        <span class="rule-badge">{{ $recommendation['rule_label'] }}</span>
+
+                                    @endif
+
 
 
                                 </div>
@@ -3162,8 +3238,18 @@
 
 
 
+                                @if (!empty($recommendation['condition']))
+
+                                    <div class="item-condition">
+
+                                        IF: {{ $recommendation['condition'] }}
+
+                                    </div>
+
+                                @endif
 
                                 <div class="item-text">
+
 
 
 

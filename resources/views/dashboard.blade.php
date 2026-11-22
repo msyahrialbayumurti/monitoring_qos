@@ -2602,11 +2602,21 @@
                                     <ul style="margin: 6px 0 0 18px; padding: 0;">
                                         @foreach($causes as $cause)
                                             <li style="margin-bottom: 5px;">
-                                                <strong>{{ $cause['parameter'] }}</strong>:
-                                                {{ $cause['cause'] }}
+                                                <strong>{{ $cause['parameter'] }}</strong>
+                                                @if(!empty($cause['rule_label']))
+                                                    <span style="display:inline-block; margin-left:5px; padding:1px 5px; border-radius:4px; background:#e8f0fb; color:#315b8c; font-size:8px; font-weight:bold; vertical-align:middle;">
+                                                        {{ $cause['rule_label'] }}
+                                                    </span>
+                                                @endif
+                                                : {{ $cause['cause'] }}
                                                 <span style="font-size: 10px;">
                                                     ({{ $cause['severity'] }})
                                                 </span>
+                                                @if(!empty($cause['condition']))
+                                                    <div style="font-family:Consolas,monospace; font-size:9px; color:#7b8ca6; margin-top:3px;">
+                                                        IF: {{ $cause['condition'] }}
+                                                    </div>
+                                                @endif
                                             </li>
                                         @endforeach
                                     </ul>
@@ -2717,11 +2727,21 @@
                                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px;">
                                         <strong style="margin-bottom: 0;">
                                             {{ $recommendation['parameter'] ?? 'QoS' }}
+                                            @if(!empty($recommendation['rule_label']))
+                                                <span style="display:inline-block; margin-left:5px; padding:1px 5px; border-radius:4px; background:#e8f0fb; color:#315b8c; font-size:8px; font-weight:bold; vertical-align:middle;">
+                                                    {{ $recommendation['rule_label'] }}
+                                                </span>
+                                            @endif
                                         </strong>
                                         <span style="font-size: 8px; font-weight: bold; padding: 3px 7px; border-radius: 5px; background: #fff7ed; color: #c2410c;">
                                             {{ $recommendation['priority'] ?? 'SEDANG' }}
                                         </span>
                                     </div>
+                                    @if(!empty($recommendation['condition']))
+                                        <div style="font-family:Consolas,monospace; font-size:9px; color:#7b8ca6; margin-bottom:5px;">
+                                            IF: {{ $recommendation['condition'] }}
+                                        </div>
+                                    @endif
                                     <p style="margin: 0;">
                                         {{ $recommendation['action'] ?? '-' }}
                                     </p>

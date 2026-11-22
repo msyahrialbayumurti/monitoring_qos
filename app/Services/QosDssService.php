@@ -107,6 +107,18 @@ class QosDssService
 
                 'action' =>
                     $action,
+
+                'rule_number' =>
+                    $cause['rule_number'] ?? null,
+
+                'rule_label' =>
+                    $cause['rule_label'] ?? null,
+
+                'rule_name' =>
+                    $cause['rule_name'] ?? null,
+
+                'condition' =>
+                    $cause['condition'] ?? null,
             ];
         }
 
@@ -217,8 +229,18 @@ class QosDssService
                 $parameters
             );
 
+        $ruleLabels =
+            array_values(array_unique(array_filter(array_map(
+                function ($recommendation) {
+                    return $recommendation['rule_label'] ?? null;
+                },
+                $recommendations
+            ))));
+
         $summary =
-            'Rekomendasi tindakan dibuat berdasarkan hasil Rule-Based RCA pada parameter: ' .
+            'Rekomendasi tindakan dibuat berdasarkan '
+            . (empty($ruleLabels) ? 'Rule-Based RCA' : implode(', ', $ruleLabels))
+            . ' pada parameter: ' .
             implode(', ', $parameters) .
             '.';
 

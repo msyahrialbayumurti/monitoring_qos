@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\QosMeasurement;
 use App\Models\School;
 use App\Services\QosClassificationService;
+use App\Services\QosRcaContextService;
 use App\Services\QosRcaService;
 use App\Services\QosDssService;
 use Illuminate\Http\Request;
@@ -14,6 +15,7 @@ class RecommendationController extends Controller
     public function index(
         Request $request,
         QosClassificationService $classification,
+        QosRcaContextService $rcaContextService,
         QosRcaService $rcaService,
         QosDssService $dssService
     ) {
@@ -34,6 +36,7 @@ class RecommendationController extends Controller
         $measurements->getCollection()->transform(
             function ($measurement) use (
                 $classification,
+                $rcaContextService,
                 $rcaService,
                 $dssService
             ) {
@@ -55,31 +58,13 @@ class RecommendationController extends Controller
                     $measurement->qos_classification['condition'] ?? null;
 
                 if (in_array($condition, ['SEDANG', 'BURUK'], true)) {
-                    $targetPacketLoss = null;
-                    $pingTimeoutRepeated = false;
-
-                    $rawOutput = $measurement->raw_output;
-
-                    if (is_string($rawOutput)) {
-                        $rawOutput = json_decode($rawOutput, true);
-                    }
-
-                    if (is_array($rawOutput)) {
-                        $targetPing = $rawOutput['target_ping'] ?? [];
-
-                        if (
-                            isset($targetPing['packet_loss']) &&
-                            is_numeric($targetPing['packet_loss'])
-                        ) {
-                            $targetPacketLoss =
-                                (float) $targetPing['packet_loss'];
-                        }
-                    }
+                    $rcaContext = $rcaContextService->build($measurement);
 
                     $measurement->rca = $rcaService->analyze(
                         $measurement->qos_classification,
-                        $targetPacketLoss,
-                        $pingTimeoutRepeated
+                        $rcaContext['target_packet_loss'],
+                        $rcaContext['ping_timeout_repeated'],
+                        $rcaContext['speedtest_succeeded']
                     );
 
                     $measurement->dss = $dssService->recommend(
