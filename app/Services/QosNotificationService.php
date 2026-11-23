@@ -26,7 +26,8 @@ class QosNotificationService
 
     public function __construct(
         private readonly FonnteService $fonnte,
-        private readonly QosClassificationService $classification
+        private readonly QosClassificationService $classification,
+        private readonly QosRcaContextService $rcaContext
     ) {
     }
 
@@ -311,13 +312,32 @@ class QosNotificationService
 
     private function parameterLines(QosMeasurement $measurement): string
     {
+        $context = $this->rcaContext->build($measurement);
+        $targetLoss = $context['target_packet_loss'] !== null
+            ? ' (loss ' . $this->formatValue($context['target_packet_loss']) . '%)'
+            : '';
+
         return implode("\n", [
             'Throughput: ' . $this->formatValue($measurement->throughput) . ' Mbps',
             'Delay: ' . $this->formatValue($measurement->delay) . ' ms',
             'Jitter: ' . $this->formatValue($measurement->jitter) . ' ms',
-            'Packet loss: ' . $this->formatValue($measurement->packet_loss) . '%',
-            'Ping: ' . $this->formatValue($measurement->ping) . ' ms',
+            'Packet loss (speedtest): ' . $this->formatValue($measurement->packet_loss) . '%',
+            'Ping gateway: ' . $this->pingLine($context['gateway_success'], $context['gateway_ping']),
+            'Ping target: ' . $this->pingLine($context['target_success'], $context['target_ping']) . $targetLoss,
         ]);
+    }
+
+    private function pingLine(?bool $success, ?float $ping): string
+    {
+        if ($success === false) {
+            return 'TIMEOUT';
+        }
+
+        if ($ping !== null) {
+            return $this->formatValue($ping) . ' ms';
+        }
+
+        return $success === true ? 'TERHUBUNG' : '-';
     }
 
     private function formatValue(mixed $value): string

@@ -12,7 +12,7 @@ try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 } catch {}
 
-$script:AgentVersion = '1.1.4'
+$script:AgentVersion = '1.1.5'
 $script:Config = $null
 
 $defaults = [ordered]@{
@@ -687,6 +687,7 @@ function Invoke-AgentCycle {
     }
 
     $ping = Measure-AgentPing -Target $target -Count ([int]$script:Config.PingCount)
+    $gatewayPing = Measure-AgentPing -Target $gateway -Count ([int]$script:Config.PingCount)
 
     if ($SkipSpeedtest -or [bool]$script:Config.SkipSpeedtest) {
         $speedtest = [ordered]@{
@@ -728,6 +729,7 @@ function Invoke-AgentCycle {
             public_ip = $publicIp
             rate_limited = $true
             ping = $ping
+            gateway_ping = $gatewayPing
             speedtest = $speedtest
         } | ConvertTo-Json -Depth 8
 
@@ -737,6 +739,13 @@ function Invoke-AgentCycle {
             jitter = $ping.jitter
             packet_loss = $ping.packet_loss
             ping = $ping.ping
+            gateway_ping = $gatewayPing.ping
+            gateway_jitter = $gatewayPing.jitter
+            gateway_packet_loss = $gatewayPing.packet_loss
+            gateway_success = $gatewayPing.success
+            target_ping = $ping.ping
+            target_packet_loss = $ping.packet_loss
+            target_success = $ping.success
             success = $false
             measured_at = $measuredAt
             raw_output = $rawOutput
@@ -822,6 +831,7 @@ function Invoke-AgentCycle {
         public_ip = $publicIp
         ping_source = $pingSource
         ping = $ping
+        gateway_ping = $gatewayPing
         speedtest = $speedtest
     } | ConvertTo-Json -Depth 8
 
@@ -831,6 +841,13 @@ function Invoke-AgentCycle {
         jitter = $jitterValue
         packet_loss = $packetLoss
         ping = $pingValue
+        gateway_ping = $gatewayPing.ping
+        gateway_jitter = $gatewayPing.jitter
+        gateway_packet_loss = $gatewayPing.packet_loss
+        gateway_success = $gatewayPing.success
+        target_ping = $ping.ping
+        target_packet_loss = $ping.packet_loss
+        target_success = $ping.success
         success = $success
         measured_at = $measuredAt
         raw_output = $rawOutput

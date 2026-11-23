@@ -107,6 +107,24 @@ class QosAnalysisController extends Controller
                 $measurement->ping_status =
                     $rcaContext['ping_status'];
 
+                $measurement->gateway_status =
+                    $rcaContext['gateway_status'];
+
+                $measurement->gateway_ping_value =
+                    $rcaContext['gateway_ping'];
+
+                $measurement->gateway_packet_loss_value =
+                    $rcaContext['gateway_packet_loss'];
+
+                $measurement->target_status =
+                    $rcaContext['ping_status'];
+
+                $measurement->target_ping_value =
+                    $rcaContext['target_ping'];
+
+                $measurement->target_packet_loss_value =
+                    $rcaContext['target_packet_loss'];
+
                 $targetPacketLoss =
                     $rcaContext['target_packet_loss'];
 
@@ -144,7 +162,8 @@ class QosAnalysisController extends Controller
                             $measurement->qos_classification,
                             $targetPacketLoss,
                             $pingTimeoutRepeated,
-                            $rcaContext['speedtest_succeeded']
+                            $rcaContext['speedtest_succeeded'],
+                            $rcaContext['gateway_success']
                         );
 
 

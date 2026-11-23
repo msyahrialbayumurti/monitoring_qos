@@ -6,13 +6,15 @@ use App\Models\QosMeasurement;
 use App\Models\School;
 use App\Services\QosClassificationService;
 use App\Services\QosMeasurementDeletionService;
+use App\Services\QosRcaContextService;
 use Illuminate\Http\Request;
 
 class MonitoringHistoryController extends Controller
 {
     public function index(
         Request $request,
-        QosClassificationService $classification
+        QosClassificationService $classification,
+        QosRcaContextService $rcaContextService
     ) {
         /*
         |--------------------------------------------------------------------------
@@ -59,7 +61,7 @@ class MonitoringHistoryController extends Controller
         */
 
         $measurements->getCollection()->transform(
-            function ($measurement) use ($classification) {
+            function ($measurement) use ($classification, $rcaContextService) {
 
                 /*
                 |--------------------------------------------------------------------------
@@ -100,61 +102,15 @@ class MonitoringHistoryController extends Controller
                 |
                 */
 
-                $measurement->ping_status = 'DATA';
+                $rcaContext = $rcaContextService->build($measurement);
 
-                if ($measurement->raw_output) {
-
-                    $rawOutput = json_decode(
-                        $measurement->raw_output,
-                        true
-                    );
-
-                    if (
-                        is_array($rawOutput) &&
-                        (isset($rawOutput['target_ping']) || isset($rawOutput['ping']))
-                    ) {
-
-                        $targetPing =
-                            $rawOutput['target_ping'] ?? $rawOutput['ping'];
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | Ping berhasil
-                        |--------------------------------------------------------------------------
-                        */
-
-                        if (
-                            isset($targetPing['success']) &&
-                            $targetPing['success'] === true
-                        ) {
-
-                            if (
-                                isset($targetPing['ping']) &&
-                                $targetPing['ping'] !== null
-                            ) {
-                                $measurement->ping_status =
-                                    'TERHUBUNG';
-                            } else {
-                                $measurement->ping_status =
-                                    'DATA';
-                            }
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | Ping timeout
-                        |--------------------------------------------------------------------------
-                        */
-
-                        } elseif (
-                            isset($targetPing['success']) &&
-                            $targetPing['success'] === false
-                        ) {
-
-                            $measurement->ping_status =
-                                'TIMEOUT';
-                        }
-                    }
-                }
+                $measurement->ping_status = $rcaContext['ping_status'];
+                $measurement->gateway_status = $rcaContext['gateway_status'];
+                $measurement->gateway_ping_value = $rcaContext['gateway_ping'];
+                $measurement->gateway_packet_loss_value = $rcaContext['gateway_packet_loss'];
+                $measurement->target_status = $rcaContext['ping_status'];
+                $measurement->target_ping_value = $rcaContext['target_ping'];
+                $measurement->target_packet_loss_value = $rcaContext['target_packet_loss'];
 
                 return $measurement;
             }

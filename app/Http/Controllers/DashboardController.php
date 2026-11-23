@@ -103,6 +103,15 @@ class DashboardController extends Controller
                     : null
             );
 
+            $rcaContext = $rcaContextService->build($latestMeasurement);
+
+            $latestMeasurement->gateway_status = $rcaContext['gateway_status'];
+            $latestMeasurement->gateway_ping_value = $rcaContext['gateway_ping'];
+            $latestMeasurement->gateway_packet_loss_value = $rcaContext['gateway_packet_loss'];
+            $latestMeasurement->target_status = $rcaContext['ping_status'];
+            $latestMeasurement->target_ping_value = $rcaContext['target_ping'];
+            $latestMeasurement->target_packet_loss_value = $rcaContext['target_packet_loss'];
+
             /*
             |--------------------------------------------------------------------------
             | RCA dan DSS
@@ -121,20 +130,13 @@ class DashboardController extends Controller
                 |--------------------------------------------------------------------------
                 | RCA
                 |--------------------------------------------------------------------------
-                |
-                | Konteks target ping (packet loss target dan timeout berulang)
-                | diambil dari pengukuran saat ini dan pengukuran sebelumnya.
-                |
                 */
-                $rcaContext = $rcaContextService->build(
-                    $latestMeasurement
-                );
-
                 $latestRca = $rcaService->analyze(
                     $latestClassification,
                     $rcaContext['target_packet_loss'],
                     $rcaContext['ping_timeout_repeated'],
-                    $rcaContext['speedtest_succeeded']
+                    $rcaContext['speedtest_succeeded'],
+                    $rcaContext['gateway_success']
                 );
 
                 /*
@@ -259,6 +261,15 @@ if ($selectedSchool) {
                 */
                 if ($measurement) {
 
+                    $rcaContext = $rcaContextService->build($measurement);
+
+                    $measurement->gateway_status = $rcaContext['gateway_status'];
+                    $measurement->gateway_ping_value = $rcaContext['gateway_ping'];
+                    $measurement->gateway_packet_loss_value = $rcaContext['gateway_packet_loss'];
+                    $measurement->target_status = $rcaContext['ping_status'];
+                    $measurement->target_ping_value = $rcaContext['target_ping'];
+                    $measurement->target_packet_loss_value = $rcaContext['target_packet_loss'];
+
                     /*
                     |--------------------------------------------------------------------------
                     | TIPHON
@@ -298,20 +309,13 @@ if ($selectedSchool) {
                         |--------------------------------------------------------------------------
                         | RCA
                         |--------------------------------------------------------------------------
-                        |
-                        | Konteks target ping (packet loss target dan timeout berulang)
-                        | diambil dari pengukuran saat ini dan pengukuran sebelumnya.
-                        |
                         */
-                        $rcaContext = $rcaContextService->build(
-                            $measurement
-                        );
-
                         $rca = $rcaService->analyze(
                             $qosClassification,
                             $rcaContext['target_packet_loss'],
                             $rcaContext['ping_timeout_repeated'],
-                            $rcaContext['speedtest_succeeded']
+                            $rcaContext['speedtest_succeeded'],
+                            $rcaContext['gateway_success']
                         );
 
                         /*

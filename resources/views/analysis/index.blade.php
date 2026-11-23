@@ -1354,6 +1354,50 @@
 
 
 
+    .analysis-page .ping-pair {
+
+        display: flex;
+
+        flex-direction: column;
+
+        gap: 2px;
+
+        line-height: 1.35;
+
+    }
+
+
+
+    .analysis-page .ping-pair-row {
+
+        display: flex;
+
+        align-items: baseline;
+
+        gap: 4px;
+
+        white-space: nowrap;
+
+    }
+
+
+
+    .analysis-page .ping-pair-label {
+
+        color: #8a9ab0;
+
+        font-size: 9px;
+
+        font-weight: 800;
+
+        letter-spacing: .04em;
+
+        text-transform: uppercase;
+
+    }
+
+
+
 
 
 
@@ -3637,7 +3681,19 @@
 
 
 
-                                PING
+                                PING GW
+
+
+
+                            </th>
+
+
+
+                            <th>
+
+
+
+                                PING TARGET
 
 
 
@@ -4237,7 +4293,48 @@
 
 
 
-                                <!-- PING -->
+                                <!-- PING GATEWAY -->
+
+
+
+
+
+
+
+                                <td>
+
+                                    @if (($measurement->gateway_status ?? null) === 'TERHUBUNG')
+
+                                        <span class="ping-connected">
+
+                                            {{ $measurement->gateway_ping_value !== null
+                                                ? number_format((float) $measurement->gateway_ping_value, 2) . ' ms'
+                                                : 'TERHUBUNG' }}
+
+                                        </span>
+
+                                    @elseif (($measurement->gateway_status ?? null) === 'TIMEOUT')
+
+                                        <span class="ping-timeout">
+
+                                            TIMEOUT
+
+                                        </span>
+
+                                    @else
+
+                                        <span class="ping-unknown">-</span>
+
+                                    @endif
+
+                                </td>
+
+
+
+
+
+
+                                <!-- PING TARGET -->
 
 
 
@@ -4257,7 +4354,7 @@
 
 
 
-                                        ($measurement->ping_status ?? null)
+                                        ($measurement->target_status ?? null)
 
 
 
@@ -4281,7 +4378,7 @@
 
 
 
-                                            {{ $measurement->ping !== null
+                                            {{ $measurement->target_ping_value !== null
 
 
 
@@ -4289,7 +4386,7 @@
 
 
 
-                                                    (float) $measurement->ping,
+                                                    (float) $measurement->target_ping_value,
 
 
 
@@ -4325,7 +4422,7 @@
 
 
 
-                                        ($measurement->ping_status ?? null)
+                                        ($measurement->target_status ?? null)
 
 
 
@@ -4361,7 +4458,7 @@
 
 
 
-                                        $measurement->ping !== null
+                                        $measurement->target_ping_value !== null
 
 
 
@@ -4385,7 +4482,7 @@
 
 
 
-                                                (float) $measurement->ping,
+                                                (float) $measurement->target_ping_value,
 
 
 

@@ -301,6 +301,28 @@
         font-weight: 700;
     }
 
+    .history-page .ping-pair {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        line-height: 1.35;
+    }
+
+    .history-page .ping-pair-row {
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
+        white-space: nowrap;
+    }
+
+    .history-page .ping-pair-label {
+        color: #8a9ab0;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+
     .history-page .status {
         display: inline-flex;
         align-items: center;
@@ -864,7 +886,7 @@
 
                             <th>PACKET LOSS</th>
 
-                            <th>PING</th>
+                            <th>PING GW / TARGET</th>
 
                             <th>STATUS</th>
 
@@ -1001,57 +1023,72 @@
 
 
 
-                                {{-- PING --}}
+                                {{-- PING GATEWAY / TARGET --}}
 
                                 <td>
 
-                                    @if ($measurement->ping_status === 'TERHUBUNG')
+                                    @php
 
-                                        <span class="ping-connected">
+                                        $gatewayStatus = $measurement->gateway_status ?? 'DATA';
+                                        $targetStatus = $measurement->target_status ?? 'DATA';
 
-                                            {{ $measurement->ping !== null
+                                    @endphp
 
-                                                ? number_format((float) $measurement->ping, 2) . ' ms'
+                                    <div class="ping-pair">
 
-                                                : 'TERHUBUNG' }}
+                                        <div class="ping-pair-row">
 
-                                        </span>
+                                            <span class="ping-pair-label">GW</span>
 
+                                            @if ($gatewayStatus === 'TERHUBUNG')
 
+                                                <span class="ping-connected">
 
-                                    @elseif ($measurement->ping_status === 'TIMEOUT')
+                                                    {{ $measurement->gateway_ping_value !== null
+                                                        ? number_format((float) $measurement->gateway_ping_value, 2) . ' ms'
+                                                        : 'TERHUBUNG' }}
 
-                                        <span class="ping-timeout">
+                                                </span>
 
-                                            TIMEOUT
+                                            @elseif ($gatewayStatus === 'TIMEOUT')
 
-                                        </span>
+                                                <span class="ping-timeout">TIMEOUT</span>
 
+                                            @else
 
+                                                <span class="ping-unknown">-</span>
 
-                                    @elseif ($measurement->ping_status === 'DATA')
+                                            @endif
 
-                                        <span class="number">
+                                        </div>
 
-                                            {{ $measurement->ping !== null
+                                        <div class="ping-pair-row">
 
-                                                ? number_format((float) $measurement->ping, 2) . ' ms'
+                                            <span class="ping-pair-label">TGT</span>
 
-                                                : '-' }}
+                                            @if ($targetStatus === 'TERHUBUNG')
 
-                                        </span>
+                                                <span class="ping-connected">
 
+                                                    {{ $measurement->target_ping_value !== null
+                                                        ? number_format((float) $measurement->target_ping_value, 2) . ' ms'
+                                                        : 'TERHUBUNG' }}
 
+                                                </span>
 
-                                    @else
+                                            @elseif ($targetStatus === 'TIMEOUT')
 
-                                        <span class="ping-unknown">
+                                                <span class="ping-timeout">TIMEOUT</span>
 
-                                            TIDAK DIKETAHUI
+                                            @else
 
-                                        </span>
+                                                <span class="ping-unknown">-</span>
 
-                                    @endif
+                                            @endif
+
+                                        </div>
+
+                                    </div>
 
                                 </td>
 

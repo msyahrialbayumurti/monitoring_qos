@@ -17,7 +17,8 @@ class QosRcaService
         array $classification,
         ?float $targetPacketLoss = null,
         bool $pingTimeoutRepeated = false,
-        bool $speedtestSucceeded = true
+        bool $speedtestSucceeded = true,
+        ?bool $gatewaySucceeded = null
     ): array {
         $condition = $classification['condition'] ?? null;
         $throughputIndex = $classification['throughput_index'] ?? null;
@@ -136,14 +137,34 @@ class QosRcaService
             ! $speedtestSucceeded;
 
         if ($targetPacketLossMendekati100 || $pingOutage) {
+            $gatewayCause = 'Gateway/router tidak merespons. Kemungkinan router atau access point mati, kabel LAN terputus, atau masalah pada segmen jaringan lokal.';
+            $gatewayRecommendation = 'Periksa router/access point, kabel LAN, dan koneksi ke gateway. Restart perangkat jaringan jika diperlukan.';
+
+            $targetCause = 'Gateway/router masih merespons, tetapi IP target tidak terjangkau. Kemungkinan target mati, ICMP diblokir, atau gangguan pada jalur ISP.';
+            $targetRecommendation = 'Pastikan IP target aktif dan mengizinkan ICMP, lalu cek jalur ISP. Gateway/router tidak perlu di-restart jika masih merespons.';
+
+            $genericCause = 'Perangkat jaringan seperti access point atau router mati, kabel terputus, atau IP target tidak terjangkau.';
+            $genericRecommendation = 'Periksa kondisi fisik perangkat keras, lakukan restart perangkat jaringan, dan cek konfigurasi IP target.';
+
+            if ($gatewaySucceeded === false) {
+                $causeText = $gatewayCause;
+                $recommendationText = $gatewayRecommendation;
+            } elseif ($gatewaySucceeded === true) {
+                $causeText = $targetCause;
+                $recommendationText = $targetRecommendation;
+            } else {
+                $causeText = $genericCause;
+                $recommendationText = $genericRecommendation;
+            }
+
             $causes[] = $this->cause(
                 4,
                 'Ping / Packet Loss Target',
                 'Ping / Packet Loss Target',
                 'PING TIMEOUT BERULANG OR PACKET LOSS TARGET >= 90%',
-                'Perangkat jaringan seperti access point atau router mati, kabel terputus, atau IP target tidak terjangkau.',
+                $causeText,
                 'KRITIS',
-                'Periksa kondisi fisik perangkat keras, lakukan restart perangkat jaringan, dan cek konfigurasi IP target.'
+                $recommendationText
             );
         }
 
