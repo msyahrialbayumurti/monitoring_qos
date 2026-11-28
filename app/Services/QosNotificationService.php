@@ -27,7 +27,9 @@ class QosNotificationService
     public function __construct(
         private readonly FonnteService $fonnte,
         private readonly QosClassificationService $classification,
-        private readonly QosRcaContextService $rcaContext
+        private readonly QosRcaContextService $rcaContext,
+        private readonly QosRcaService $rca,
+        private readonly QosDssService $dss
     ) {
     }
 
@@ -112,6 +114,15 @@ class QosNotificationService
         }
 
         $current = $this->classify($measurement, $school->bandwidth);
+        $context = $this->rcaContext->build($measurement);
+        $rca = $this->rca->analyze(
+            $current,
+            $context['target_packet_loss'],
+            $context['ping_timeout_repeated'],
+            $context['speedtest_succeeded'],
+            $context['gateway_success']
+        );
+        $dss = $this->dss->recommend($rca);
         $previous = $this->previousMeasurement($measurement);
         $previousCondition = $previous
             ? $this->conditionOf($previous, $school->bandwidth)
@@ -132,7 +143,10 @@ class QosNotificationService
             $event,
             $measurement,
             $current,
-            $previousCondition
+            $previousCondition,
+            $rca,
+            $dss,
+            $context
         );
 
         $result = $this->fonnte->send($phone, $message);
@@ -253,7 +267,10 @@ class QosNotificationService
         string $event,
         QosMeasurement $measurement,
         array $classification,
-        ?string $previousCondition
+        ?string $previousCondition,
+        array $rca,
+        array $dss,
+        array $context
     ): string {
         $schoolName = $measurement->school?->nama_sekolah ?? 'Sekolah';
         $time = $measurement->measured_at?->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i');
@@ -265,7 +282,8 @@ class QosNotificationService
             return implode("\n", [
                 '[NETMONITOR] ' . $schoolName,
                 'Pengukuran QoS gagal pada ' . $time . '.',
-                'Periksa koneksi internet dan status agent sekolah.',
+                'Penyebab: Pengukuran QoS gagal.',
+                'Rekomendasi: Periksa koneksi internet dan status agent sekolah.',
                 $dashboardUrl,
             ]);
         }
@@ -279,7 +297,8 @@ class QosNotificationService
                 'Hasil pengukuran QoS: ' . $condition
                     . ($index !== null ? ' (indeks ' . number_format((float) $index, 2) . ')' : '')
                     . '.',
-                $this->parameterLines($measurement),
+                $this->parameterLines($measurement, $context),
+                $this->analysisLines($rca, $dss),
                 'Waktu: ' . $time,
                 $dashboardUrl,
             ]);
@@ -291,7 +310,8 @@ class QosNotificationService
                 'Kondisi QoS membaik ke ' . $condition
                     . ($index !== null ? ' (indeks ' . number_format((float) $index, 2) . ')' : '')
                     . '.',
-                $this->parameterLines($measurement),
+                $this->parameterLines($measurement, $context),
+                $this->analysisLines($rca, $dss),
                 'Waktu: ' . $time,
                 $dashboardUrl,
             ]);
@@ -304,15 +324,15 @@ class QosNotificationService
             'Kondisi QoS berubah dari ' . $from . ' ke ' . $condition
                 . ($index !== null ? ' (indeks ' . number_format((float) $index, 2) . ')' : '')
                 . '.',
-            $this->parameterLines($measurement),
+            $this->parameterLines($measurement, $context),
+            $this->analysisLines($rca, $dss),
             'Waktu: ' . $time,
             $dashboardUrl,
         ]);
     }
 
-    private function parameterLines(QosMeasurement $measurement): string
+    private function parameterLines(QosMeasurement $measurement, array $context): string
     {
-        $context = $this->rcaContext->build($measurement);
         $targetLoss = $context['target_packet_loss'] !== null
             ? ' (loss ' . $this->formatValue($context['target_packet_loss']) . '%)'
             : '';
@@ -325,6 +345,39 @@ class QosNotificationService
             'Ping gateway: ' . $this->pingLine($context['gateway_success'], $context['gateway_ping']),
             'Ping target: ' . $this->pingLine($context['target_success'], $context['target_ping']) . $targetLoss,
         ]);
+    }
+
+    private function analysisLines(array $rca, array $dss): string
+    {
+        $causes = $rca['causes'] ?? [];
+        $recommendations = $dss['recommendations'] ?? [];
+        $condition = $rca['condition'] ?? null;
+
+        if (empty($causes)) {
+            $causeText = $condition === 'BAIK'
+                ? 'Tidak ditemukan indikasi gangguan.'
+                : ($rca['summary'] ?? 'Tidak ada penyebab spesifik.');
+        } else {
+            $causeText = implode('; ', array_map(function (array $cause) {
+                $label = $cause['rule_label'] ?? null;
+                $text = $cause['cause'] ?? '-';
+
+                return $label ? $label . ': ' . $text : $text;
+            }, $causes));
+        }
+
+        if (empty($recommendations)) {
+            $recommendationText = $condition === 'BAIK'
+                ? 'Tidak diperlukan tindakan khusus.'
+                : ($dss['summary'] ?? 'Tidak ada rekomendasi spesifik.');
+        } else {
+            $recommendationText = implode('; ', array_map(
+                fn (array $recommendation) => $recommendation['action'] ?? '-',
+                $recommendations
+            ));
+        }
+
+        return 'Penyebab: ' . $causeText . "\nRekomendasi: " . $recommendationText;
     }
 
     private function pingLine(?bool $success, ?float $ping): string

@@ -49,7 +49,9 @@ class WhatsAppNotificationTest extends TestCase
             return $request->url() === 'https://api.fonnte.com/send'
                 && $request['target'] === '628123456789'
                 && str_contains($request['message'], $school->nama_sekolah)
-                && str_contains($request['message'], 'BAIK');
+                && str_contains($request['message'], 'BAIK')
+                && str_contains($request['message'], 'Penyebab:')
+                && str_contains($request['message'], 'Rekomendasi:');
         });
 
         $this->makeMeasurement($school, [
@@ -66,7 +68,9 @@ class WhatsAppNotificationTest extends TestCase
             return $request->url() === 'https://api.fonnte.com/send'
                 && $request['target'] === '628123456789'
                 && str_contains($request['message'], $school->nama_sekolah)
-                && str_contains($request['message'], 'BURUK');
+                && str_contains($request['message'], 'BURUK')
+                && str_contains($request['message'], 'Penyebab:')
+                && str_contains($request['message'], 'Rekomendasi:');
         });
 
         $this->assertDatabaseHas('whatsapp_notifications', [

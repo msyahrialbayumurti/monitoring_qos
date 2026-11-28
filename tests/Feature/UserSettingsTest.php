@@ -20,11 +20,6 @@ class UserSettingsTest extends TestCase
             ['value' => '5']
         );
 
-        Setting::updateOrCreate(
-            ['key' => 'dashboard_refresh_interval'],
-            ['value' => '30']
-        );
-
         $schoolA = $this->makeSchool('TEMP Settings A');
         $schoolB = $this->makeSchool('TEMP Settings B');
 
@@ -34,7 +29,6 @@ class UserSettingsTest extends TestCase
         $this->actingAs($userA)
             ->put(route('settings.update'), [
                 'monitoring_interval' => 15,
-                'dashboard_refresh_interval' => 120,
             ])
             ->assertRedirect(route('settings.index'));
 
@@ -42,12 +36,6 @@ class UserSettingsTest extends TestCase
             'user_id' => $userA->id,
             'key' => 'monitoring_interval',
             'value' => '15',
-        ]);
-
-        $this->assertDatabaseHas('user_settings', [
-            'user_id' => $userA->id,
-            'key' => 'dashboard_refresh_interval',
-            'value' => '120',
         ]);
 
         $this->assertDatabaseMissing('user_settings', [

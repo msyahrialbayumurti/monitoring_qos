@@ -381,21 +381,6 @@ if ($selectedSchool) {
 
         /*
         |--------------------------------------------------------------------------
-        | Interval penyegaran dashboard milik akun ini
-        |--------------------------------------------------------------------------
-        */
-        $dashboardRefreshInterval = (int) UserSetting::getForUser(
-            $user?->id,
-            'dashboard_refresh_interval',
-            '30'
-        );
-
-        if (!in_array($dashboardRefreshInterval, [15, 30, 60, 120], true)) {
-            $dashboardRefreshInterval = 30;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
         | Kirim data ke dashboard
         |--------------------------------------------------------------------------
         */
@@ -408,7 +393,6 @@ if ($selectedSchool) {
             'latestDss' => $latestDss,
             'chartMeasurements' => $chartMeasurements,
             'schoolStatuses' => $schoolStatuses,
-            'dashboardRefreshInterval' => $dashboardRefreshInterval,
         ]);
     }
 

@@ -2948,11 +2948,6 @@
         });
     });
 
-    // Refresh dashboard mengikuti pengaturan sistem (detik).
-    const dashboardRefreshSeconds = @json($dashboardRefreshInterval ?? 30);
-    setInterval(function () {
-        window.location.reload();
-    }, Math.max(15, dashboardRefreshSeconds) * 1000);
 </script>
 @endpush
 

@@ -475,7 +475,7 @@
         <div>
             <div class="settings-eyebrow">Pengaturan Akun</div>
             <h1>Pengaturan NETMONITOR</h1>
-            <p>Setelan berikut hanya berlaku untuk akun ini. Kelola jadwal pengukuran QoS, penyegaran dashboard, dan notifikasi WhatsApp sesuai kebutuhan akun Anda.</p>
+            <p>Setelan berikut hanya berlaku untuk akun ini. Kelola jadwal pengukuran QoS dan notifikasi WhatsApp sesuai kebutuhan akun Anda.</p>
         </div>
         <div class="settings-date">{{ now()->translatedFormat('d F Y') }}</div>
     </header>
@@ -534,17 +534,6 @@
                             <option value="15" @selected((string) old('monitoring_interval', $interval) === '15')>Setiap 15 menit</option>
                         </select>
                         <small class="settings-help">Mengatur jadwal pengukuran QoS otomatis oleh Laravel Scheduler. Scheduler harus tetap aktif agar pengukuran berjalan.</small>
-                    </div>
-
-                    <div class="settings-form-group">
-                        <label for="dashboard_refresh_interval">Interval Penyegaran Dashboard</label>
-                        <select id="dashboard_refresh_interval" name="dashboard_refresh_interval" required @disabled(!$canEdit)>
-                            <option value="15" @selected((string) old('dashboard_refresh_interval', $refreshInterval) === '15')>Setiap 15 detik</option>
-                            <option value="30" @selected((string) old('dashboard_refresh_interval', $refreshInterval) === '30')>Setiap 30 detik</option>
-                            <option value="60" @selected((string) old('dashboard_refresh_interval', $refreshInterval) === '60')>Setiap 1 menit</option>
-                            <option value="120" @selected((string) old('dashboard_refresh_interval', $refreshInterval) === '120')>Setiap 2 menit</option>
-                        </select>
-                        <small class="settings-help">Mengatur seberapa sering dashboard memeriksa data terbaru. Ini berbeda dari interval pengukuran QoS.</small>
                     </div>
 
                     @if ($canEdit)
@@ -651,17 +640,6 @@
                         </div>
 
                         <div class="settings-info-item">
-                            <div class="settings-info-label">Penyegaran Dashboard</div>
-                            <div class="settings-info-value">
-                                @if ($refreshInterval < 60)
-                                    Setiap {{ $refreshInterval }} detik
-                                @else
-                                    Setiap {{ (int) ($refreshInterval / 60) }} menit
-                                @endif
-                            </div>
-                        </div>
-
-                        <div class="settings-info-item">
                             <div class="settings-info-label">Klasifikasi QoS</div>
                             <div class="settings-info-value">TIPHON</div>
                         </div>
@@ -678,7 +656,7 @@
             </section>
 
             <aside class="settings-note">
-                <strong>Catatan:</strong> interval pengukuran QoS menentukan kapan sistem menjalankan pengukuran baru, sedangkan interval penyegaran dashboard hanya menentukan seberapa sering tampilan dashboard meminta data terbaru. Keduanya memiliki fungsi berbeda.
+                <strong>Catatan:</strong> interval pengukuran QoS menentukan kapan agent mengirim data baru. Dashboard menampilkan data terbaru saat halaman dimuat atau di-refresh manual.
             </aside>
         </div>
     </div>

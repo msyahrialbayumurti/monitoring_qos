@@ -20,18 +20,8 @@ class SettingsController extends Controller
             '5'
         );
 
-        $refreshInterval = (int) UserSetting::getForUser(
-            $userId,
-            'dashboard_refresh_interval',
-            '30'
-        );
-
         if (!in_array($interval, [1, 5, 10, 15], true)) {
             $interval = 5;
-        }
-
-        if (!in_array($refreshInterval, [15, 30, 60, 120], true)) {
-            $refreshInterval = 30;
         }
 
         $whatsappNumber = $this->userSetting($userId, 'whatsapp_number', '');
@@ -42,7 +32,6 @@ class SettingsController extends Controller
 
         return view('settings.index', compact(
             'interval',
-            'refreshInterval',
             'canEdit',
             'whatsappNumber',
             'whatsappNotifications',
@@ -58,11 +47,6 @@ class SettingsController extends Controller
                 'integer',
                 'in:1,5,10,15',
             ],
-            'dashboard_refresh_interval' => [
-                'required',
-                'integer',
-                'in:15,30,60,120',
-            ],
         ]);
 
         $userId = $request->user()->id;
@@ -71,12 +55,6 @@ class SettingsController extends Controller
             $userId,
             'monitoring_interval',
             (string) $validated['monitoring_interval']
-        );
-
-        UserSetting::setForUser(
-            $userId,
-            'dashboard_refresh_interval',
-            (string) $validated['dashboard_refresh_interval']
         );
 
         return redirect()
