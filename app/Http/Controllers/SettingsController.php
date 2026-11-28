@@ -14,52 +14,15 @@ class SettingsController extends Controller
     {
         $userId = auth()->id();
 
-        $interval = (int) UserSetting::getForUser(
-            $userId,
-            'monitoring_interval',
-            '5'
-        );
-
-        if (!in_array($interval, [1, 5, 10, 15], true)) {
-            $interval = 5;
-        }
-
         $whatsappNumber = $this->userSetting($userId, 'whatsapp_number', '');
         $whatsappNotifications = $this->userSetting($userId, 'whatsapp_notifications', '0') === '1';
         $fonnteConfigured = $fonnte->isConfigured();
 
-        $canEdit = true;
-
         return view('settings.index', compact(
-            'interval',
-            'canEdit',
             'whatsappNumber',
             'whatsappNotifications',
             'fonnteConfigured'
         ));
-    }
-
-    public function update(Request $request)
-    {
-        $validated = $request->validate([
-            'monitoring_interval' => [
-                'required',
-                'integer',
-                'in:1,5,10,15',
-            ],
-        ]);
-
-        $userId = $request->user()->id;
-
-        UserSetting::setForUser(
-            $userId,
-            'monitoring_interval',
-            (string) $validated['monitoring_interval']
-        );
-
-        return redirect()
-            ->route('settings.index')
-            ->with('success', 'Pengaturan akun berhasil disimpan.');
     }
 
     public function updateWhatsApp(Request $request)

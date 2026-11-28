@@ -2948,6 +2948,34 @@
         });
     });
 
+    // Muat ulang halaman hanya saat ada pengukuran baru.
+    const dashboardLatestUrl = @json(route('dashboard.latest'));
+    const dashboardLatestMeasurementId = @json($latestMeasurement?->id);
+
+    setInterval(async function () {
+        if (document.visibilityState !== 'visible') return;
+
+        try {
+            const response = await fetch(dashboardLatestUrl, {
+                headers: { 'Accept': 'application/json' },
+                cache: 'no-store',
+            });
+
+            if (!response.ok) return;
+
+            const data = await response.json();
+
+            if (
+                data.measurement_id &&
+                data.measurement_id !== dashboardLatestMeasurementId
+            ) {
+                window.location.reload();
+            }
+        } catch (error) {
+            // Abaikan kegagalan sementara; percobaan berikutnya tetap berjalan.
+        }
+    }, 30000);
+
 </script>
 @endpush
 

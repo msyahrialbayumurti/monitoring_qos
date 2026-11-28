@@ -503,51 +503,8 @@
         </div>
     @endif
 
-    @unless ($canEdit)
-        <div class="settings-alert settings-alert-error" role="alert" style="color:#315b94;background:#f2f7ff;border-color:#cfe0fa;">
-            Pengaturan interval hanya dapat diubah oleh administrator. Anda dapat melihat konfigurasi yang sedang berlaku.
-        </div>
-    @endunless
-
     <div class="settings-layout">
         <div>
-        <section class="settings-card">
-            <div class="settings-card-header">
-                <div class="settings-card-icon" aria-hidden="true">⚙</div>
-                <div>
-                    <h2>Konfigurasi Monitoring</h2>
-                    <p>Atur frekuensi pengukuran dan pembaruan data dashboard.</p>
-                </div>
-            </div>
-
-            <div class="settings-card-body">
-                <form method="POST" action="{{ route('settings.update') }}">
-                    @csrf
-                    @method('PUT')
-
-                    <div class="settings-form-group">
-                        <label for="monitoring_interval">Interval Monitoring QoS</label>
-                        <select id="monitoring_interval" name="monitoring_interval" required @disabled(!$canEdit)>
-                            <option value="1" @selected((string) old('monitoring_interval', $interval) === '1')>Setiap 1 menit</option>
-                            <option value="5" @selected((string) old('monitoring_interval', $interval) === '5')>Setiap 5 menit</option>
-                            <option value="10" @selected((string) old('monitoring_interval', $interval) === '10')>Setiap 10 menit</option>
-                            <option value="15" @selected((string) old('monitoring_interval', $interval) === '15')>Setiap 15 menit</option>
-                        </select>
-                        <small class="settings-help">Mengatur jadwal pengukuran QoS otomatis oleh Laravel Scheduler. Scheduler harus tetap aktif agar pengukuran berjalan.</small>
-                    </div>
-
-                    @if ($canEdit)
-                        <div class="settings-actions">
-                            <button type="submit" class="settings-save">
-                                <span aria-hidden="true">�o"</span>
-                                Simpan Pengaturan
-                            </button>
-                        </div>
-                    @endif
-                </form>
-            </div>
-        </section>
-
         <section class="settings-card">
             <div class="settings-card-header">
                 <div class="settings-card-icon" aria-hidden="true">WA</div>
@@ -635,11 +592,6 @@
                         </div>
 
                         <div class="settings-info-item">
-                            <div class="settings-info-label">Interval Monitoring QoS</div>
-                            <div class="settings-info-value">Setiap {{ $interval }} menit</div>
-                        </div>
-
-                        <div class="settings-info-item">
                             <div class="settings-info-label">Klasifikasi QoS</div>
                             <div class="settings-info-value">TIPHON</div>
                         </div>
@@ -656,7 +608,7 @@
             </section>
 
             <aside class="settings-note">
-                <strong>Catatan:</strong> interval pengukuran QoS menentukan kapan agent mengirim data baru. Dashboard menampilkan data terbaru saat halaman dimuat atau di-refresh manual.
+                <strong>Catatan:</strong> agent mengirim data baru setiap 5 menit. Dashboard memeriksa data terbaru secara otomatis dan memuat ulang tampilan saat ada pengukuran baru.
             </aside>
         </div>
     </div>

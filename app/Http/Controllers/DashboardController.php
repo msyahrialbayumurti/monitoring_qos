@@ -4,11 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\School;
 use App\Models\QosMeasurement;
-use App\Models\UserSetting;
 use App\Services\QosClassificationService;
 use App\Services\QosRcaContextService;
 use App\Services\QosRcaService;
 use App\Services\QosDssService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -396,4 +396,32 @@ if ($selectedSchool) {
         ]);
     }
 
+    public function latest(Request $request): JsonResponse
+    {
+        $schoolId = $request->user()?->school_id;
+
+        if (! $schoolId) {
+            return response()->json([
+                'measurement_id' => null,
+                'measured_at' => null,
+            ]);
+        }
+
+        $measurement = QosMeasurement::query()
+            ->where('school_id', $schoolId)
+            ->where('success', true)
+            ->whereNotNull('throughput')
+            ->whereNotNull('delay')
+            ->whereNotNull('jitter')
+            ->whereNotNull('packet_loss')
+            ->whereNotNull('ping')
+            ->latest('measured_at')
+            ->latest('id')
+            ->first();
+
+        return response()->json([
+            'measurement_id' => $measurement?->id,
+            'measured_at' => $measurement?->measured_at?->toIso8601String(),
+        ]);
+    }
 }

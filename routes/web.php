@@ -66,6 +66,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->name('dashboard');
 
+    Route::get('/dashboard/latest', [DashboardController::class, 'latest'])
+        ->name('dashboard.latest');
+
     Route::get('/schools/{school}/agent-setup', [AgentSetupController::class, 'download'])
         ->name('agent.setup');
 
@@ -107,9 +110,6 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/pengaturan', [SettingsController::class, 'index'])
         ->name('settings.index');
-
-    Route::put('/pengaturan', [SettingsController::class, 'update'])
-        ->name('settings.update');
 
     Route::put('/pengaturan/whatsapp', [SettingsController::class, 'updateWhatsApp'])
         ->name('settings.whatsapp.update');
